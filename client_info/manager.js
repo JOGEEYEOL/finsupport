@@ -1518,7 +1518,7 @@ window.resetPassword = async function() {
     const managerId = managerDoc.id;
     
     // Firebase Functions 호출 (담당자 본인이 초기화)
-    const setManagerPassword = getFunctions().httpsCallable('setManagerPassword');
+    const setManagerPassword = httpsCallable(functions, 'setManagerPassword');
     await setManagerPassword({
       managerId: managerId,
       password: '0000'

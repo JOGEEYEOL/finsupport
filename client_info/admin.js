@@ -5,15 +5,25 @@ import { getStorage, ref, deleteObject } from "https://www.gstatic.com/firebasej
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-functions.js";
 import { db } from "./database.js";
 
-// import { initializeApp } from "firebase/app";
-// import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "firebase/auth";
-// import { ENCRYPT_KEY } from "./script.js";
+// Firebase 설정
+const firebaseConfig = {
+  apiKey: 'AIzaSyA-N7FA3LyOs35W4-LQPnsJAo313mSG8XY',
+  authDomain: 'client-insurance-42400.firebaseapp.com',
+  projectId: 'client-insurance-42400',
+  storageBucket: 'client-insurance-42400.firebasestorage.app',
+  messagingSenderId: '1093798525474',
+  appId: '1:1093798525474:web:05a799e12064fae4c9e87b',
+  measurementId: 'G-R9WCBDJX1F'
+};
+
+// Firebase 초기화
+const app = initializeApp(firebaseConfig);
 
 // Firebase Auth 초기화
-const auth = getAuth();
+const auth = getAuth(app);
 
 // Firebase Functions 초기화
-const functions = getFunctions();
+const functions = getFunctions(app);
 
 // 암호화 키는 더 이상 클라이언트에서 사용하지 않음 (서버 사이드로 이동)
 // const ENCRYPT_KEY = window.currentConfig.encryptKey;
@@ -3096,7 +3106,7 @@ async function resetManagerPassword(managerId) {
   
   try {
     // Firebase Functions 호출
-    const setManagerPassword = getFunctions().httpsCallable('setManagerPassword');
+    const setManagerPassword = httpsCallable(functions, 'setManagerPassword');
     const result = await setManagerPassword({
       managerId: managerId,
       password: '0000'
