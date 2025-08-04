@@ -1415,8 +1415,10 @@ body.login-mode .sidebar-toggle {
 .load-more-container {
   display: flex;
   justify-content: center;
-  margin: 20px 0;
+  align-items: center;
+  margin: 30px 0;
   padding: 20px 0;
+  text-align: center;
 }
 
 .load-more-btn {

@@ -84,14 +84,14 @@ let allClients = [];
 let pagedClients = [];
 let lastVisible = null;
 let isLoadingClients = false;
-const PAGE_SIZE = 10; // 10개씩 표시하도록 변경
+const PAGE_SIZE = 5; // 5개씩 표시하도록 변경
 
 // 페이지네이션을 위한 새로운 변수들
 let displayedClients = [];
 let displayedManagers = [];
 let currentClientPage = 0;
 let currentManagerPage = 0;
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 5;
 
 // DOM 요소 접근을 위한 변수들
 let searchInput, cardList, detailModal, detailContent, closeModal;

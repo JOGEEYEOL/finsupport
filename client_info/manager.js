@@ -90,6 +90,16 @@ window.login = async function() {
     if (result.data.manager) {
       currentManager = result.data.manager;
       
+      // localStorage에 로그인 정보 저장 (보안을 위해 민감하지 않은 정보만 저장)
+      const sessionData = {
+        code: currentManager.code,
+        name: currentManager.name,
+        team: currentManager.team,
+        role: currentManager.role,
+        loginTime: Date.now()
+      };
+      localStorage.setItem('managerSession', JSON.stringify(sessionData));
+      
       // 초기 비밀번호(0000) 사용 시 강제 변경 요구
       if (password === '0000') {
         isInitialPasswordUser = true;
@@ -154,6 +164,9 @@ window.logout = function(skipConfirm = false) {
   if (skipConfirm || confirm('다시 로그인해야 합니다.')) {
     currentManager = null;
     currentClients = [];
+    
+    // localStorage에서 세션 정보 삭제
+    localStorage.removeItem('managerSession');
     
     // 로그인 폼을 원래 상태로 복원
     const loginForm = document.getElementById('login-form');
@@ -1470,8 +1483,89 @@ window.closeInsuranceModal = function() {
   document.body.style.overflow = '';
 };
 
+// 세션 복원 함수
+async function restoreSession() {
+  try {
+    const sessionData = localStorage.getItem('managerSession');
+    if (!sessionData) {
+      return false; // 세션 없음
+    }
+
+    const session = JSON.parse(sessionData);
+    const sessionAge = Date.now() - session.loginTime;
+    const MAX_SESSION_AGE = 24 * 60 * 60 * 1000; // 24시간
+
+    // 세션이 24시간 이상 되었으면 만료
+    if (sessionAge > MAX_SESSION_AGE) {
+      localStorage.removeItem('managerSession');
+      return false;
+    }
+
+    // 세션 데이터를 사용해서 담당자 정보 복원
+    const managerData = await getManagerByCode(session.code);
+    if (managerData) {
+      currentManager = managerData;
+      
+      // 메인 페이지 표시
+      document.getElementById('login-form').style.display = 'none';
+      document.getElementById('main-container').style.display = 'flex';
+      
+      // 모바일에서만 햄버거 버튼 표시
+      const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+      if (mobileMenuToggle) {
+        if (window.innerWidth <= 768) {
+          mobileMenuToggle.style.display = 'flex';
+        } else {
+          mobileMenuToggle.style.display = 'none';
+        }
+      }
+      
+      // 담당자 정보 표시
+      updateManagerInfo();
+      
+      // 초기 데이터 로드
+      await loadManagerProfile();
+      await loadManagerClients();
+      await loadInsuranceAccounts();
+      
+      return true; // 세션 복원 성공
+    }
+  } catch (error) {
+    console.error('세션 복원 중 오류:', error);
+    localStorage.removeItem('managerSession');
+  }
+  
+  return false; // 세션 복원 실패
+}
+
+// Firebase에서 담당자 정보 조회 함수
+async function getManagerByCode(code) {
+  try {
+    const q = query(collection(db, 'managers'), where('code', '==', code));
+    const querySnapshot = await getDocs(q);
+    
+    if (!querySnapshot.empty) {
+      const doc = querySnapshot.docs[0];
+      return { id: doc.id, ...doc.data() };
+    }
+  } catch (error) {
+    console.error('담당자 정보 조회 오류:', error);
+  }
+  
+  return null;
+}
+
 // DOM 로드 후 초기화
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
+  // 먼저 세션 복원 시도
+  const sessionRestored = await restoreSession();
+  
+  if (!sessionRestored) {
+    // 세션 복원 실패 시 로그인 폼 표시
+    document.getElementById('login-form').style.display = 'flex';
+    document.getElementById('main-container').style.display = 'none';
+  }
+  
   // 모바일 햄버거 메뉴 이벤트
   const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
   const sidebar = document.getElementById('sidebar');
