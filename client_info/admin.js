@@ -3310,11 +3310,20 @@ window.uploadExcelData = async function() {
   try {
     // 헤더 행 찾기 (첫 번째 행)
     const headers = excelData[0];
-    console.log('엑셀 헤더:', headers);
+    console.log('=== 엑셀 파일 분석 시작 ===');
+    console.log('엑셀 전체 데이터 행 수:', excelData.length);
+    console.log('첫 번째 행 (헤더):', headers);
+    console.log('두 번째 행 (첫 데이터):', excelData[1]);
     
     // 헤더에서 필요한 컬럼 인덱스 찾기
     const columnMapping = findColumnMappings(headers);
+    console.log('=== 최종 컬럼 매핑 결과 ===');
     console.log('컬럼 매핑:', columnMapping);
+    
+    // 매핑된 보험사 개수 확인
+    const mappedCompanies = Object.keys(columnMapping.insuranceAccounts);
+    console.log(`매핑된 보험사 개수: ${mappedCompanies.length}개`);
+    console.log('매핑된 보험사들:', mappedCompanies);
     
     if (!columnMapping.managerName) {
       alert('담당자명(사원명) 컬럼을 찾을 수 없습니다.');
