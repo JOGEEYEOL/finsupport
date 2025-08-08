@@ -3520,45 +3520,86 @@ function findColumnMappings(headers) {
     }
     
     // 사원번호 찾기 (가이아 아이디로 사용)
-    if (headerStr.includes('사원번호') || headerStr.includes('직원번호') || headerStr === '번호') {
+    if (headerStr.includes('사원번호') || headerStr.includes('직원번호') || headerStr === '번호' || headerStr === '사원번호') {
       mapping.employeeNumber = index;
       console.log(`사원번호 컬럼 찾음: ${index}`);
     }
     
-    // 보험사 계정 정보 찾기 - 더 유연한 매칭
+    // 첫 번째 컬럼이 사원번호인 경우 (PDF 구조 기반)
+    if (index === 0 && headerStr === '사원번호') {
+      mapping.employeeNumber = index;
+      console.log(`첫 번째 컬럼을 사원번호로 설정: ${index}`);
+    }
+    
+    // 보험사 계정 정보 찾기 - 대폭 개선된 매칭 로직
     [...lifeInsuranceCompanies, ...nonLifeInsuranceCompanies].forEach(company => {
       const companyName = company.name.toLowerCase();
+      let isMatch = false;
       
-      // 보험사 이름이 포함된 헤더 찾기
-      if (headerStr.includes(companyName) || 
-          headerStr.includes(companyName.replace('생명', '')) || 
-          headerStr.includes(companyName.replace('손해보험', '')) ||
-          headerStr.includes(companyName.replace('화재', '')) ||
-          headerStr.includes(companyName.replace('보험', ''))) {
-        
+      // 다양한 보험사 이름 패턴으로 매칭 시도
+      const matchPatterns = [
+        companyName, // 전체 이름
+        companyName.replace('생명', ''),
+        companyName.replace('손해보험', ''),
+        companyName.replace('화재', ''),
+        companyName.replace('보험', ''),
+        companyName.replace('손해', ''),
+        companyName.split('')[0] + companyName.split('')[1], // 앞 2글자
+        companyName.split('생명')[0], // '생명' 앞부분만
+        companyName.split('손해')[0], // '손해' 앞부분만
+        companyName.split('화재')[0]  // '화재' 앞부분만
+      ];
+      
+      // 특별 매핑 (PDF에서 자주 쓰이는 축약형)
+      const specialMappings = {
+        'abl생명': ['abl'],
+        'nh농협생명': ['농협생명', 'nh농협', '농협'],
+        'im라이프생명': ['im라이프', 'im'],
+        'kb생명': ['kb'],
+        'kb손해보험': ['kb손해', 'kb손보'],
+        'mg손해보험': ['mg손해', 'mg'],
+        'db손해보험': ['db손해', 'db'],
+        '한화손해보험': ['한화손해'],
+        '삼성화재': ['삼성'],
+        '현대해상': ['현대'],
+        '메리츠화재': ['메리츠'],
+        '흥국화재': ['흥국'],
+        '롯데손보': ['롯데'],
+        '농협손보': ['농협손보', '농협'],
+        '하나생명': ['하나'],
+        '하나손해': ['하나손해'],
+        '라이나손해보험': ['라이나손해', '라이나']
+      };
+      
+      if (specialMappings[companyName]) {
+        matchPatterns.push(...specialMappings[companyName]);
+      }
+      
+      // 패턴 매칭 시도
+      for (const pattern of matchPatterns) {
+        if (pattern && headerStr.includes(pattern)) {
+          isMatch = true;
+          break;
+        }
+      }
+      
+      if (isMatch) {
         if (!mapping.insuranceAccounts[company.key]) {
           mapping.insuranceAccounts[company.key] = {};
         }
         
         console.log(`${company.name} 관련 컬럼 찾음: ${headerStr} (인덱스: ${index})`);
         
-        // 사원번호/아이디 관련
-        if (headerStr.includes('사원') || headerStr.includes('직원') || 
-            headerStr.includes('번호') || headerStr.includes('id') || 
-            headerStr.includes('아이디') || headerStr.includes('계정')) {
+        // 사원번호/아이디 관련 (기본값)
+        if (!headerStr.includes('비밀번호') && !headerStr.includes('password') && 
+            !headerStr.includes('패스워드') && !headerStr.includes('pw')) {
           mapping.insuranceAccounts[company.key].employeeId = index;
           console.log(`${company.name} 사원번호: ${index}`);
         }
         // 비밀번호 관련
-        else if (headerStr.includes('비밀번호') || headerStr.includes('password') || 
-                 headerStr.includes('패스워드') || headerStr.includes('pw')) {
+        else {
           mapping.insuranceAccounts[company.key].password = index;
           console.log(`${company.name} 비밀번호: ${index}`);
-        }
-        // 기본적으로 사원번호로 간주 (다른 키워드가 없으면)
-        else {
-          mapping.insuranceAccounts[company.key].employeeId = index;
-          console.log(`${company.name} 기본 사원번호로 설정: ${index}`);
         }
       }
     });
