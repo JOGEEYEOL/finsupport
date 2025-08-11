@@ -15,8 +15,15 @@ function getUrlParams() {
 async function loadExamInfo() {
   const { examId, managerCode } = getUrlParams();
   
+  // 파라미터가 없는 경우 (일반 지원자) - 기본 정보 표시
+  if (!examId && !managerCode) {
+    displayDefaultInfo();
+    return true;
+  }
+  
+  // 파라미터가 일부만 있는 경우
   if (!examId || !managerCode) {
-    showError('잘못된 접근입니다. 올바른 링크를 통해 접속해주세요.');
+    showError('링크가 올바르지 않습니다. 담당자에게 다시 확인해주세요.');
     return false;
   }
   
@@ -58,7 +65,28 @@ async function loadExamInfo() {
   }
 }
 
-// 시험 정보 표시
+// 기본 정보 표시 (파라미터 없이 접근한 경우)
+function displayDefaultInfo() {
+  const examDetails = document.getElementById('exam-details');
+  if (!examDetails) return;
+  
+  examDetails.innerHTML = `
+    <div class="exam-item">
+      <i class="fas fa-info-circle"></i>
+      <span><strong>일반 지원:</strong> 생명보험자격시험 위촉자 지원</span>
+    </div>
+    <div class="exam-item">
+      <i class="fas fa-globe"></i>
+      <span><strong>온라인 지원:</strong> 온라인으로 직접 지원하신 경우입니다</span>
+    </div>
+    <div class="exam-item">
+      <i class="fas fa-phone"></i>
+      <span><strong>문의:</strong> 담당자 배정 후 연락드리겠습니다</span>
+    </div>
+  `;
+}
+
+// 시험 정보 표시 (담당자 연결된 경우)
 function displayExamInfo(examData, managerData) {
   const examDetails = document.getElementById('exam-details');
   if (!examDetails) return;
@@ -406,8 +434,9 @@ document.addEventListener('DOMContentLoaded', async function() {
       try {
         // 폼 데이터 수집
         const formData = {
-          examId: document.getElementById('examId').value,
-          managerCode: document.getElementById('managerCode').value,
+          examId: document.getElementById('examId').value || null, // 빈 값은 null로 처리
+          managerCode: document.getElementById('managerCode').value || null, // 빈 값은 null로 처리
+          applicationType: document.getElementById('examId').value ? 'manager_referral' : 'direct_application', // 지원 유형 구분
           name: document.getElementById('name').value.trim(),
           ssn: document.getElementById('ssnFront').value + '-' + document.getElementById('ssnBack').value,
           email: document.getElementById('email').value.trim(),
