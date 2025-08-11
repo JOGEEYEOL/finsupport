@@ -394,6 +394,225 @@ function showSuccessMessage() {
   `;
 }
 
+// 단계별 폼 관리
+let currentStep = 1;
+const totalSteps = 6;
+
+// 단계 이동 함수
+function goToStep(step) {
+  if (step < 1 || step > totalSteps) return;
+  
+  // 현재 단계 숨기기
+  const currentSection = document.querySelector(`.step-section[data-step="${currentStep}"]`);
+  if (currentSection) {
+    currentSection.classList.remove('active');
+  }
+  
+  // 새 단계 보이기
+  const newSection = document.querySelector(`.step-section[data-step="${step}"]`);
+  if (newSection) {
+    newSection.classList.add('active');
+  }
+  
+  // 현재 단계 업데이트
+  currentStep = step;
+  
+  // UI 업데이트
+  updateProgressBar();
+  updateStepLabels();
+  updateNavigationButtons();
+  
+  // 스크롤을 최상단으로
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// 진행률 바 업데이트
+function updateProgressBar() {
+  const progressFill = document.getElementById('progress-fill');
+  const currentStepSpan = document.getElementById('current-step');
+  
+  if (progressFill) {
+    const progress = (currentStep / totalSteps) * 100;
+    progressFill.style.width = `${progress}%`;
+  }
+  
+  if (currentStepSpan) {
+    currentStepSpan.textContent = currentStep;
+  }
+}
+
+// 단계 라벨 업데이트
+function updateStepLabels() {
+  const stepLabels = document.querySelectorAll('.step-label');
+  stepLabels.forEach((label, index) => {
+    const stepNumber = index + 1;
+    label.classList.remove('active', 'completed');
+    
+    if (stepNumber === currentStep) {
+      label.classList.add('active');
+    } else if (stepNumber < currentStep) {
+      label.classList.add('completed');
+    }
+  });
+}
+
+// 네비게이션 버튼 업데이트
+function updateNavigationButtons() {
+  const prevBtn = document.getElementById('prev-btn');
+  const nextBtn = document.getElementById('next-btn');
+  
+  // 이전 버튼
+  if (prevBtn) {
+    if (currentStep === 1) {
+      prevBtn.style.display = 'none';
+    } else {
+      prevBtn.style.display = 'flex';
+    }
+  }
+  
+  // 다음 버튼
+  if (nextBtn) {
+    if (currentStep === totalSteps) {
+      nextBtn.style.display = 'none';
+    } else {
+      nextBtn.style.display = 'flex';
+      // 현재 단계의 검증 상태에 따라 활성화/비활성화
+      nextBtn.disabled = !validateCurrentStep();
+    }
+  }
+}
+
+// 현재 단계 검증
+function validateCurrentStep() {
+  switch (currentStep) {
+    case 1: // 기본 정보
+      const name = document.getElementById('name').value.trim();
+      const ssnFront = document.getElementById('ssnFront').value;
+      const ssnBack = document.getElementById('ssnBack').value;
+      return name && ssnFront.length === 6 && ssnBack.length === 7;
+      
+    case 2: // 연락처 정보
+      const phoneCarrier = document.getElementById('phoneCarrier').value;
+      const phone = document.getElementById('phone').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      return phoneCarrier && phone && email && emailRegex.test(email);
+      
+    case 3: // 주소 정보
+      const postcode = document.getElementById('postcode').value;
+      const addressDetail = document.getElementById('addressDetail').value.trim();
+      return postcode && addressDetail;
+      
+    case 4: // 계좌 정보
+      const bank = document.getElementById('bank').value;
+      const accountNumber = document.getElementById('accountNumber').value.trim();
+      const accountHolder = document.getElementById('accountHolder').value.trim();
+      return bank && accountNumber && accountHolder;
+      
+    case 5: // 학력 및 경력
+      const education = document.getElementById('education').value;
+      const experience = document.querySelector('input[name="experience"]:checked');
+      return education && experience;
+      
+    case 6: // 동의 및 제출
+      const agree1 = document.getElementById('agree1').checked;
+      return agree1;
+      
+    default:
+      return false;
+  }
+}
+
+// 단계별 입력 필드 검증 이벤트 리스너 설정
+function setupStepValidation() {
+  // 1단계 필드들
+  ['name', 'ssnFront', 'ssnBack'].forEach(id => {
+    const field = document.getElementById(id);
+    if (field) {
+      field.addEventListener('input', () => {
+        if (currentStep === 1) {
+          updateNavigationButtons();
+        }
+      });
+    }
+  });
+  
+  // 2단계 필드들
+  ['phoneCarrier', 'phone', 'email'].forEach(id => {
+    const field = document.getElementById(id);
+    if (field) {
+      field.addEventListener('input', () => {
+        if (currentStep === 2) {
+          updateNavigationButtons();
+        }
+      });
+      field.addEventListener('change', () => {
+        if (currentStep === 2) {
+          updateNavigationButtons();
+        }
+      });
+    }
+  });
+  
+  // 3단계 필드들
+  ['postcode', 'addressDetail'].forEach(id => {
+    const field = document.getElementById(id);
+    if (field) {
+      field.addEventListener('input', () => {
+        if (currentStep === 3) {
+          updateNavigationButtons();
+        }
+      });
+    }
+  });
+  
+  // 4단계 필드들
+  ['bank', 'accountNumber', 'accountHolder'].forEach(id => {
+    const field = document.getElementById(id);
+    if (field) {
+      field.addEventListener('input', () => {
+        if (currentStep === 4) {
+          updateNavigationButtons();
+        }
+      });
+      field.addEventListener('change', () => {
+        if (currentStep === 4) {
+          updateNavigationButtons();
+        }
+      });
+    }
+  });
+  
+  // 5단계 필드들
+  const education = document.getElementById('education');
+  if (education) {
+    education.addEventListener('change', () => {
+      if (currentStep === 5) {
+        updateNavigationButtons();
+      }
+    });
+  }
+  
+  const experienceRadios = document.querySelectorAll('input[name="experience"]');
+  experienceRadios.forEach(radio => {
+    radio.addEventListener('change', () => {
+      if (currentStep === 5) {
+        updateNavigationButtons();
+      }
+    });
+  });
+  
+  // 6단계 필드들
+  const agree1 = document.getElementById('agree1');
+  if (agree1) {
+    agree1.addEventListener('change', () => {
+      if (currentStep === 6) {
+        updateNavigationButtons();
+      }
+    });
+  }
+}
+
 // DOM 로드 완료 시 초기화
 document.addEventListener('DOMContentLoaded', async function() {
   // 시험 정보 로드
@@ -409,6 +628,30 @@ document.addEventListener('DOMContentLoaded', async function() {
   setupExperienceFields();
   setupConsentCheckbox();
   setupModals();
+  setupStepValidation();
+  
+  // 단계별 폼 초기화
+  updateProgressBar();
+  updateStepLabels();
+  updateNavigationButtons();
+  
+  // 네비게이션 버튼 이벤트 리스너
+  const prevBtn = document.getElementById('prev-btn');
+  const nextBtn = document.getElementById('next-btn');
+  
+  if (prevBtn) {
+    prevBtn.addEventListener('click', () => {
+      goToStep(currentStep - 1);
+    });
+  }
+  
+  if (nextBtn) {
+    nextBtn.addEventListener('click', () => {
+      if (validateCurrentStep()) {
+        goToStep(currentStep + 1);
+      }
+    });
+  }
   
   // 폼 제출 이벤트
   const form = document.getElementById('applicantInfoForm');

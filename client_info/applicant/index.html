@@ -44,122 +44,149 @@
         </div>
       </div>
 
-      <h3><i class="fas fa-user-plus"></i> 위촉자 정보 입력</h3>
+      <!-- 진행률 표시 바 -->
+      <div class="progress-container">
+        <div class="progress-header">
+          <h3><i class="fas fa-user-plus"></i> 위촉자 정보 입력</h3>
+          <div class="step-indicator">
+            <span id="current-step">1</span> / <span id="total-steps">6</span>
+          </div>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progress-fill"></div>
+        </div>
+        <div class="step-labels">
+          <span class="step-label active" data-step="1">기본정보</span>
+          <span class="step-label" data-step="2">연락처</span>
+          <span class="step-label" data-step="3">주소</span>
+          <span class="step-label" data-step="4">계좌</span>
+          <span class="step-label" data-step="5">학력/경력</span>
+          <span class="step-label" data-step="6">동의/제출</span>
+        </div>
+      </div>
+
       <form id="applicantInfoForm">
         
-        <!-- 기본 정보 섹션 -->
-        <div class="form-section">
-          <h4><i class="fas fa-id-card"></i> 기본 정보</h4>
-          
-          <div class="form-group">
-            <label for="name" class="required">성함</label>
-            <input type="text" id="name" name="name" />
-            <div class="error-message" id="name-error">성함을 입력해주세요.</div>
-          </div>
+        <!-- 1단계: 기본 정보 -->
+        <div class="step-section active" data-step="1">
+          <div class="form-section">
+            <h4><i class="fas fa-id-card"></i> 기본 정보</h4>
+            
+            <div class="form-group">
+              <label for="name" class="required">성함</label>
+              <input type="text" id="name" name="name" />
+              <div class="error-message" id="name-error">성함을 입력해주세요.</div>
+            </div>
 
-          <div class="form-group">
-            <label for="ssn" class="required">주민등록번호</label>
-            <div class="ssn-group">
-              <input
-                type="tel"
-                id="ssnFront"
-                name="ssnFront"
-                maxlength="6"
-                pattern="[0-9]*"
-                inputmode="numeric"
-                placeholder="앞 6자리"
-              />
-              <span>-</span>
-              <input
-                type="tel"
-                id="ssnBack"
-                name="ssnBack"
-                maxlength="7"
-                pattern="[0-9]*"
-                inputmode="numeric"
-                placeholder="뒤 7자리"
-              />
-            </div>
-            <div class="error-message" id="ssn-error">
-              주민등록번호를 입력해주세요.
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label for="email" class="required">이메일 주소</label>
-            <input type="email" id="email" name="email" placeholder="example@example.com" />
-            <div class="error-message" id="email-error">이메일 주소를 입력해주세요.</div>
-          </div>
-        </div>
-
-        <!-- 연락처 정보 섹션 -->
-        <div class="form-section">
-          <h4><i class="fas fa-phone"></i> 연락처 정보</h4>
-          
-          <div class="form-group">
-            <label for="phone" class="required">핸드폰번호</label>
-            <div class="phone-group">
-              <select id="phoneCarrier" name="phoneCarrier">
-                <option value="">통신사</option>
-                <option value="SKT">SKT</option>
-                <option value="KT">KT</option>
-                <option value="LG">LG U+</option>
-                <option value="SKT알뜰">SKT알뜰</option>
-                <option value="KT알뜰">KT알뜰</option>
-                <option value="LG알뜰">LG U+알뜰</option>
-              </select>
-              <input
-                type="tel"
-                id="phone"
-                name="phone"
-                maxlength="13"
-                placeholder="01000000000"
-              />
-            </div>
-            <div class="error-message" id="phoneCarrier-error">
-              통신사를 선택해주세요.
-            </div>
-            <div class="error-message" id="phone-error">
-              핸드폰번호를 입력해주세요.
+            <div class="form-group">
+              <label for="ssn" class="required">주민등록번호</label>
+              <div class="ssn-group">
+                <input
+                  type="tel"
+                  id="ssnFront"
+                  name="ssnFront"
+                  maxlength="6"
+                  pattern="[0-9]*"
+                  inputmode="numeric"
+                  placeholder="앞 6자리"
+                />
+                <span>-</span>
+                <input
+                  type="tel"
+                  id="ssnBack"
+                  name="ssnBack"
+                  maxlength="7"
+                  pattern="[0-9]*"
+                  inputmode="numeric"
+                  placeholder="뒤 7자리"
+                />
+              </div>
+              <div class="error-message" id="ssn-error">
+                주민등록번호를 입력해주세요.
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- 주소 정보 섹션 -->
-        <div class="form-section">
-          <h4><i class="fas fa-home"></i> 주소 정보</h4>
-          
-          <div class="form-group">
-            <label for="address" class="required">자택 주소</label>
-            <div class="address-group">
-              <input type="text" id="postcode" placeholder="우편번호" readonly />
-              <button type="button" onclick="execDaumPostcode()">
-                주소 검색
-              </button>
+        <!-- 2단계: 연락처 정보 -->
+        <div class="step-section" data-step="2">
+          <div class="form-section">
+            <h4><i class="fas fa-phone"></i> 연락처 정보</h4>
+            
+            <div class="form-group">
+              <label for="phone" class="required">핸드폰번호</label>
+              <div class="phone-group">
+                <select id="phoneCarrier" name="phoneCarrier">
+                  <option value="">통신사</option>
+                  <option value="SKT">SKT</option>
+                  <option value="KT">KT</option>
+                  <option value="LG">LG U+</option>
+                  <option value="SKT알뜰">SKT알뜰</option>
+                  <option value="KT알뜰">KT알뜰</option>
+                  <option value="LG알뜰">LG U+알뜰</option>
+                </select>
+                <input
+                  type="tel"
+                  id="phone"
+                  name="phone"
+                  maxlength="13"
+                  placeholder="01000000000"
+                />
+              </div>
+              <div class="error-message" id="phoneCarrier-error">
+                통신사를 선택해주세요.
+              </div>
+              <div class="error-message" id="phone-error">
+                핸드폰번호를 입력해주세요.
+              </div>
             </div>
-            <input
-              type="text"
-              id="address"
-              name="address"
-              placeholder="기본주소"
-              readonly
-            />
-            <input
-              type="text"
-              id="addressDetail"
-              name="addressDetail"
-              class="address-detail"
-              placeholder="상세주소"
-            />
-            <div class="error-message" id="address-error">
-              주소를 입력해주세요.
+
+            <div class="form-group">
+              <label for="email" class="required">이메일 주소</label>
+              <input type="email" id="email" name="email" placeholder="example@example.com" />
+              <div class="error-message" id="email-error">이메일 주소를 입력해주세요.</div>
             </div>
           </div>
         </div>
 
-        <!-- 계좌 정보 섹션 -->
-        <div class="form-section">
-          <h4><i class="fas fa-university"></i> 계좌 정보</h4>
+        <!-- 3단계: 주소 정보 -->
+        <div class="step-section" data-step="3">
+          <div class="form-section">
+            <h4><i class="fas fa-home"></i> 주소 정보</h4>
+            
+            <div class="form-group">
+              <label for="address" class="required">자택 주소</label>
+              <div class="address-group">
+                <input type="text" id="postcode" placeholder="우편번호" readonly />
+                <button type="button" onclick="execDaumPostcode()">
+                  주소 검색
+                </button>
+              </div>
+              <input
+                type="text"
+                id="address"
+                name="address"
+                placeholder="기본주소"
+                readonly
+              />
+              <input
+                type="text"
+                id="addressDetail"
+                name="addressDetail"
+                class="address-detail"
+                placeholder="상세주소"
+              />
+              <div class="error-message" id="address-error">
+                주소를 입력해주세요.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4단계: 계좌 정보 -->
+        <div class="step-section" data-step="4">
+          <div class="form-section">
+            <h4><i class="fas fa-university"></i> 계좌 정보</h4>
           
           <div class="form-group">
             <label for="bank" class="required">은행</label>
@@ -200,11 +227,13 @@
             <input type="text" id="accountHolder" name="accountHolder" />
             <div class="error-message" id="accountHolder-error">예금주를 입력해주세요.</div>
           </div>
+          </div>
         </div>
 
-        <!-- 학력 및 경력 섹션 -->
-        <div class="form-section">
-          <h4><i class="fas fa-graduation-cap"></i> 학력 및 경력 정보</h4>
+        <!-- 5단계: 학력 및 경력 정보 -->
+        <div class="step-section" data-step="5">
+          <div class="form-section">
+            <h4><i class="fas fa-graduation-cap"></i> 학력 및 경력 정보</h4>
           
           <div class="form-group">
             <label for="education" class="required">최종 학력</label>
@@ -258,10 +287,12 @@
             <label for="prevCompany">이전 회사명</label>
             <input type="text" id="prevCompany" name="prevCompany" placeholder="이전 직장명" />
           </div>
+          </div>
         </div>
 
-        <!-- 개인정보 동의 -->
-        <div class="consent-section">
+        <!-- 6단계: 개인정보 동의 및 제출 -->
+        <div class="step-section" data-step="6">
+          <div class="consent-section">
           <div class="consent-row">
             <div class="consent-left">
               <span
@@ -335,10 +366,22 @@
           </div>
         </div>
 
-        <!-- 제출 버튼 -->
-        <div class="form-group">
-          <button type="submit" class="submit-btn">
-            <i class="fas fa-paper-plane"></i> 제출하기
+            <!-- 제출 버튼 -->
+            <div class="form-group">
+              <button type="submit" class="submit-btn">
+                <i class="fas fa-paper-plane"></i> 제출하기
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 네비게이션 버튼들 -->
+        <div class="step-navigation">
+          <button type="button" id="prev-btn" class="nav-btn prev-btn" style="display: none;">
+            <i class="fas fa-chevron-left"></i> 이전
+          </button>
+          <button type="button" id="next-btn" class="nav-btn next-btn" disabled>
+            다음 <i class="fas fa-chevron-right"></i>
           </button>
         </div>
       </form>
