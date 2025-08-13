@@ -471,6 +471,53 @@ select:focus {
   color: #2980b9;
 }
 
+/* 요약 정보 스타일 */
+.summary-content {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+  margin-bottom: 20px;
+}
+
+.summary-section {
+  margin-bottom: 20px;
+}
+
+.summary-section:last-child {
+  margin-bottom: 0;
+}
+
+.summary-title {
+  font-weight: 600;
+  color: #495057;
+  font-size: 14px;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 14px;
+}
+
+.summary-label {
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.summary-value {
+  color: #212529;
+  font-weight: 600;
+  text-align: right;
+  max-width: 60%;
+  word-break: break-word;
+}
+
 /* 에러 메시지 */
 .error-message {
   color: #e74c3c;
@@ -490,29 +537,39 @@ textarea.error {
   background-color: #fff5f5;
 }
 
-/* 제출 버튼 */
+/* 제출 버튼 (네비게이션 영역에 위치) */
 .submit-btn {
-  width: 100%;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  padding: 16px;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 18px;
-  font-weight: 600;
-  margin-top: 32px;
-  transition: all 0.3s;
+  margin-left: auto;
+}
+
+.submit-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
   box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
 }
 
-.submit-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+.submit-btn:disabled {
+  background: #e9ecef;
+  color: #adb5bd;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
-.submit-btn i {
-  margin-right: 8px;
+.submit-btn:disabled:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.submit-btn.active {
+  background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+  box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+}
+
+.submit-btn.active:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(39, 174, 96, 0.4);
 }
 
 /* 모달 */
@@ -664,20 +721,24 @@ textarea.error {
     text-overflow: ellipsis;
   }
   
-  /* 네비게이션 버튼 모바일 */
+  /* 네비게이션 버튼 모바일 - 한 줄 유지 */
   .step-navigation {
-    flex-direction: column;
-    gap: 15px;
+    gap: 10px;
   }
   
   .nav-btn {
-    width: 100%;
+    flex: 1;
     justify-content: center;
-    padding: 14px;
-    font-size: 16px;
+    padding: 14px 10px;
+    font-size: 15px;
+  }
+  
+  .prev-btn {
+    min-width: 80px;
   }
   
   .next-btn {
+    min-width: 80px;
     margin-left: 0;
   }
 }
@@ -702,5 +763,19 @@ textarea.error {
   .submit-btn {
     font-size: 16px;
     padding: 14px;
+  }
+  
+  /* 480px 이하에서도 네비게이션 버튼 한 줄 유지 */
+  .step-navigation {
+    gap: 8px;
+  }
+  
+  .nav-btn {
+    font-size: 14px;
+    padding: 12px 8px;
+  }
+  
+  .nav-btn i {
+    font-size: 12px;
   }
 }

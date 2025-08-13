@@ -1,5 +1,5 @@
 import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-auth.js";
-import { collection, getDocs, query, where, doc, updateDoc, collection as fsCollection, addDoc, deleteDoc, onSnapshot, orderBy, Timestamp, limit, startAfter } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-firestore.js";
+import { collection, getDocs, query, where, doc, getDoc, updateDoc, collection as fsCollection, addDoc, deleteDoc, onSnapshot, orderBy, Timestamp, limit, startAfter } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-firestore.js";
 import { ref, deleteObject } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-storage.js";
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-functions.js";
 import { db } from "../common/config/database.js";
@@ -608,13 +608,52 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // 햄버거 메뉴 토글 (모바일)
-  const sidebarToggle = document.getElementById('sidebar-toggle');
+  const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
   const sidebar = document.getElementById('sidebar');
-  if (sidebarToggle && sidebar) {
-    sidebarToggle.addEventListener('click', () => {
+  const sidebarOverlay = document.getElementById('sidebar-overlay');
+  
+  if (mobileMenuToggle && sidebar) {
+    mobileMenuToggle.addEventListener('click', () => {
+      mobileMenuToggle.classList.toggle('active');
       sidebar.classList.toggle('open');
+      if (sidebarOverlay) {
+        sidebarOverlay.style.display = sidebar.classList.contains('open') ? 'block' : 'none';
+      }
     });
   }
+  
+  // 오버레이 클릭 시 사이드바 닫기
+  if (sidebarOverlay) {
+    sidebarOverlay.addEventListener('click', () => {
+      mobileMenuToggle.classList.remove('active');
+      sidebar.classList.remove('open');
+      sidebarOverlay.style.display = 'none';
+    });
+  }
+
+  // if (mobileMenuToggle && sidebar && sidebarOverlay) {
+  //   const openMenu = () => {
+  //     sidebar.classList.add('open');
+  //     sidebarOverlay.classList.add('show'); // CSS에서 .sidebar-overlay.show { display:block; }
+  //     document.body.style.overflow = 'hidden';
+  //     mobileMenuToggle.setAttribute('aria-expanded', 'true');
+  //   };
+
+  //   const closeMenu = () => {
+  //     sidebar.classList.remove('open');
+  //     sidebarOverlay.classList.remove('show');
+  //     document.body.style.overflow = '';
+  //     mobileMenuToggle.setAttribute('aria-expanded', 'false');
+  //   };
+
+  //   const toggleMenu = () => (sidebar.classList.contains('open') ? closeMenu() : openMenu());
+
+  //   mobileMenuToggle.addEventListener('click', toggleMenu);
+  //   sidebarOverlay.addEventListener('click', closeMenu);
+  //   document.addEventListener('keydown', (e) => {
+  //     if (e.key === 'Escape' && sidebar.classList.contains('open')) closeMenu();
+  //   });
+  // }
 
   // setupInfiniteScroll(); // 페이지네이션으로 대체
 });
@@ -2055,7 +2094,7 @@ function showManagerDetail(manager) {
   renderManagerDetail(false);
   
   // 모달 표시
-  detailModal.style.display = 'block';
+  detailModal.style.display = 'flex';
   
   // ESC 키로 단계별 뒤로가기 - 기존 리스너 정리
   document.removeEventListener('keydown', window.currentManagerEscHandler);
@@ -2518,13 +2557,24 @@ function initMenuSwitch() {
   const menuManagerInfo = document.getElementById('menu-manager-info');
   const menuClients = document.getElementById('menu-clients');
   const menuExamSchedule = document.getElementById('menu-exam-schedule');
+  const menuApplicants = document.getElementById('menu-applicants');
   const managerSection = document.getElementById('manager-section');
   const managerInfoSection = document.getElementById('manager-info-section');
   const clientSection = document.getElementById('client-section');
   const examScheduleSection = document.getElementById('exam-schedule-section');
+  const applicantsSection = document.getElementById('applicants-section');
   const sidebar = document.getElementById('sidebar');
+  const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+  const sidebarOverlay = document.getElementById('sidebar-overlay');
+  
+  // 모바일 사이드바 닫기 함수
+  const closeMobileSidebar = () => {
+    sidebar.classList.remove('open');
+    if (mobileMenuToggle) mobileMenuToggle.classList.remove('active');
+    if (sidebarOverlay) sidebarOverlay.style.display = 'none';
+  };
 
-  if (!menuManagers || !menuManagerInfo || !menuClients || !menuExamSchedule || !managerSection || !managerInfoSection || !clientSection || !examScheduleSection || !sidebar) return;
+  if (!menuManagers || !menuManagerInfo || !menuClients || !menuExamSchedule || !menuApplicants || !managerSection || !managerInfoSection || !clientSection || !examScheduleSection || !applicantsSection || !sidebar) return;
 
   menuManagers.addEventListener('click', () => {
     // 모달 클래스 정리
@@ -2534,11 +2584,13 @@ function initMenuSwitch() {
     menuManagerInfo.classList.remove('active');
     menuClients.classList.remove('active');
     menuExamSchedule.classList.remove('active');
+    menuApplicants.classList.remove('active');
     managerSection.style.display = '';
     managerInfoSection.style.display = 'none';
     clientSection.style.display = 'none';
     examScheduleSection.style.display = 'none';
-    sidebar.classList.remove('open');
+    applicantsSection.style.display = 'none';
+    closeMobileSidebar();
     
     // 담당자 정보 조회 검색창 초기화 및 전체 데이터 표시
     const managerSearchInput = document.getElementById('managerSearchInput');
@@ -2563,11 +2615,13 @@ function initMenuSwitch() {
     menuManagerInfo.classList.add('active');
     menuClients.classList.remove('active');
     menuExamSchedule.classList.remove('active');
+    menuApplicants.classList.remove('active');
     managerSection.style.display = 'none';
     managerInfoSection.style.display = '';
     clientSection.style.display = 'none';
     examScheduleSection.style.display = 'none';
-    sidebar.classList.remove('open');
+    applicantsSection.style.display = 'none';
+    closeMobileSidebar();
     
     // 고객 정보 관리 검색창 초기화 및 전체 데이터 표시
     const searchInput = document.getElementById('searchInput');
@@ -2590,11 +2644,13 @@ function initMenuSwitch() {
     menuManagerInfo.classList.remove('active');
     menuClients.classList.add('active');
     menuExamSchedule.classList.remove('active');
+    menuApplicants.classList.remove('active');
     managerSection.style.display = 'none';
     managerInfoSection.style.display = 'none';
     clientSection.style.display = '';
     examScheduleSection.style.display = 'none';
-    sidebar.classList.remove('open');
+    applicantsSection.style.display = 'none';
+    closeMobileSidebar();
     
     // 담당자 정보 조회 검색창 초기화 및 전체 데이터 표시
     const managerSearchInput = document.getElementById('managerSearchInput');
@@ -2616,15 +2672,39 @@ function initMenuSwitch() {
     menuManagerInfo.classList.remove('active');
     menuClients.classList.remove('active');
     menuExamSchedule.classList.add('active');
+    menuApplicants.classList.remove('active');
     managerSection.style.display = 'none';
     managerInfoSection.style.display = 'none';
     clientSection.style.display = 'none';
     examScheduleSection.style.display = '';
-    sidebar.classList.remove('open');
+    applicantsSection.style.display = 'none';
+    closeMobileSidebar();
     
     // 자격시험 일정 페이지 진입 시 컴포넌트 초기화
     setTimeout(() => {
       initializeExamSchedule();
+    }, 100);
+  });
+
+  menuApplicants.addEventListener('click', () => {
+    // 모달 클래스 정리
+    cleanupModalClasses();
+    
+    menuManagers.classList.remove('active');
+    menuManagerInfo.classList.remove('active');
+    menuClients.classList.remove('active');
+    menuExamSchedule.classList.remove('active');
+    menuApplicants.classList.add('active');
+    managerSection.style.display = 'none';
+    managerInfoSection.style.display = 'none';
+    clientSection.style.display = 'none';
+    examScheduleSection.style.display = 'none';
+    applicantsSection.style.display = '';
+    closeMobileSidebar();
+    
+    // 위촉자 조회 페이지 진입 시 컴포넌트 초기화
+    setTimeout(() => {
+      initializeApplicantViewer();
     }, 100);
   });
 }
@@ -3648,6 +3728,145 @@ window.refreshExamSchedule = async function() {
   }
 };
 
+// ========== 토스트 메시지 표시 기능 ==========
+function showToast(message, type = 'info') {
+  // 기존 토스트가 있으면 제거
+  const existingToast = document.querySelector('.admin-toast');
+  if (existingToast) {
+    existingToast.remove();
+  }
+
+  // 토스트 요소 생성
+  const toast = document.createElement('div');
+  toast.className = 'admin-toast';
+  
+  // 타입별 색상 설정
+  let backgroundColor;
+  switch (type) {
+    case 'success':
+      backgroundColor = '#27ae60';
+      break;
+    case 'error':
+      backgroundColor = '#e74c3c';
+      break;
+    case 'warning':
+      backgroundColor = '#f39c12';
+      break;
+    default:
+      backgroundColor = '#3498db';
+  }
+  
+  // 스타일 적용
+  Object.assign(toast.style, {
+    position: 'fixed',
+    top: '20px',
+    right: '20px',
+    background: backgroundColor,
+    color: 'white',
+    padding: '16px 24px',
+    borderRadius: '8px',
+    fontWeight: '600',
+    fontSize: '14px',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+    zIndex: '10000',
+    opacity: '0',
+    transform: 'translateX(100%)',
+    transition: 'all 0.3s ease'
+  });
+  
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  
+  // 애니메이션으로 나타내기
+  setTimeout(() => {
+    toast.style.opacity = '1';
+    toast.style.transform = 'translateX(0)';
+  }, 100);
+  
+  // 3초 후 사라지기
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(100%)';
+    
+    setTimeout(() => {
+      if (toast.parentNode) {
+        toast.parentNode.removeChild(toast);
+      }
+    }, 300);
+  }, 3000);
+}
+
+// ========== 위촉자 신청 링크 복사 기능 ==========
+// 위촉자 신청 링크 복사 함수 (어드민용 - 담당자 코드 없이)
+window.copyApplicantLink = function(url, examDate, buttonElement) {
+  // 버튼 요소가 전달되지 않은 경우 이벤트를 통해 찾기
+  if (!buttonElement) {
+    buttonElement = event.target;
+  }
+  
+  // 버튼 상태 변경 함수
+  function updateButtonState(button, text, color, icon) {
+    if (button) {
+      button.innerHTML = `<i class="${icon}"></i> ${text}`;
+      if (color) {
+        button.style.background = color;
+      }
+    }
+  }
+  
+  // 원본 버튼 내용 저장
+  const originalHTML = buttonElement.innerHTML;
+  const originalBackground = buttonElement.style.background;
+  
+  // 복사 중 표시
+  updateButtonState(buttonElement, '복사중...', 'linear-gradient(135deg, #3498db 0%, #2980b9 100%)', 'fas fa-spinner fa-spin');
+  
+  // 클립보드에 URL 복사
+  navigator.clipboard.writeText(url).then(() => {
+    // 성공 표시
+    updateButtonState(buttonElement, '복사됨!', 'linear-gradient(135deg, #27ae60 0%, #2ecc71 100%)', 'fas fa-check');
+    
+    // 토스트 메시지 표시
+    showToast(`📋 신청 링크가 복사되었습니다!`, 'success');
+    
+    // 2초 후 원래 상태로 복원
+    setTimeout(() => {
+      buttonElement.innerHTML = originalHTML;
+      buttonElement.style.background = originalBackground;
+    }, 2000);
+  }).catch(err => {
+    console.error('링크 복사 실패:', err);
+    // 클립보드 API가 지원되지 않는 경우 fallback
+    const textArea = document.createElement('textarea');
+    textArea.value = url;
+    document.body.appendChild(textArea);
+    textArea.select();
+    try {
+      document.execCommand('copy');
+      // 성공 표시
+      updateButtonState(buttonElement, '복사됨!', 'linear-gradient(135deg, #27ae60 0%, #2ecc71 100%)', 'fas fa-check');
+      showToast(`📋 신청 링크가 복사되었습니다!`, 'success');
+      
+      // 2초 후 원래 상태로 복원
+      setTimeout(() => {
+        buttonElement.innerHTML = originalHTML;
+        buttonElement.style.background = originalBackground;
+      }, 2000);
+    } catch (err) {
+      // 실패 표시
+      updateButtonState(buttonElement, '실패', 'linear-gradient(135deg, #e74c3c 0%, #c0392b 100%)', 'fas fa-times');
+      showToast(`❌ 링크 복사에 실패했습니다`, 'error');
+      
+      // 3초 후 원래 상태로 복원
+      setTimeout(() => {
+        buttonElement.innerHTML = originalHTML;
+        buttonElement.style.background = originalBackground;
+      }, 3000);
+    }
+    document.body.removeChild(textArea);
+  });
+};
+
 // 자격시험 일정 초기화 함수
 function initializeExamSchedule() {
   // 컴포넌트가 이미 초기화되었으면 파괴
@@ -3655,10 +3874,11 @@ function initializeExamSchedule() {
     examScheduleUI.destroy();
   }
   
-  // 새로운 컴포넌트 생성 및 초기화
+  // 새로운 컴포넌트 생성 및 초기화 (어드민용)
   examScheduleUI = ExamScheduleUI.createWithCrawlButton('lifeInsuranceSchedule', {
     defaultRegion: '서울',
-    showCrawlButton: true
+    showCrawlButton: true,
+    isAdminMode: true  // 어드민 모드 플래그 추가
   });
   
   examScheduleUI.initialize();
@@ -3770,7 +3990,697 @@ window.downloadExcelTemplate = function() {
   }
 };
 
+
+
+// ========== Admin 전용 ApplicantViewer 클래스 ==========
+class AdminApplicantViewer {
+  constructor(containerId) {
+    this.containerId = containerId;
+    this.container = document.getElementById(containerId);
+    this.applicants = [];
+    this.filteredApplicants = [];
+    this.currentFilter = '';
+    this.modal = null;
+  }
+
+  async initialize() {
+    if (!this.container) {
+      throw new Error('컨테이너를 찾을 수 없습니다.');
+    }
+
+    // HTML 구조 생성
+    this.render();
+    
+    // 이벤트 리스너 설정
+    this.setupEventListeners();
+    
+    // 데이터 로드
+    await this.loadApplicants();
+    
+    // 모달 생성
+    this.createModal();
+  }
+
+  render() {
+    this.container.innerHTML = `
+      <div style="text-align: center; margin-bottom: 24px;">
+        <h3 style="margin: 0 0 8px 0; color: #2c3e50; font-size: 24px; font-weight: 600;">
+          위촉자 조회
+        </h3>
+        <p style="margin: 0; color: #666; font-size: 14px;">
+          전체 담당자의 위촉자 정보를 조회하고 관리합니다.
+        </p>
+      </div>
+      
+      <div class="admin-search-area">
+        <div class="admin-search-input-group">
+          <input type="text" id="admin-applicant-search" placeholder="성명, 전화번호, 시험일, 담당자로 검색">
+          <button type="button" id="admin-search-reset" class="admin-search-reset-btn">
+            <i class="fas fa-redo-alt"></i>
+          </button>
+        </div>
+        <button type="button" id="admin-excel-download" class="admin-excel-download-btn">
+          <i class="fas fa-file-excel"></i> 엑셀 다운로드
+        </button>
+      </div>
+      
+      <div id="admin-applicant-list" class="admin-card-list"></div>
+    `;
+  }
+
+  setupEventListeners() {
+    // 검색 이벤트
+    const searchInput = document.getElementById('admin-applicant-search');
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        this.currentFilter = e.target.value.trim();
+        this.filterApplicants();
+      });
+    }
+
+    // 리셋 버튼
+    const resetBtn = document.getElementById('admin-search-reset');
+    if (resetBtn) {
+      resetBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        this.currentFilter = '';
+        this.filterApplicants();
+      });
+    }
+
+    // 엑셀 다운로드
+    const excelBtn = document.getElementById('admin-excel-download');
+    if (excelBtn) {
+      excelBtn.addEventListener('click', () => {
+        this.downloadExcel();
+      });
+    }
+  }
+
+  async loadApplicants() {
+    try {
+      const applicantsRef = collection(db, 'applicants');
+      const querySnapshot = await getDocs(applicantsRef);
+      
+      this.applicants = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        this.applicants.push({
+          id: doc.id,
+          ...data
+        });
+      });
+
+      this.filteredApplicants = [...this.applicants];
+      this.renderStats();
+      await this.renderCards();
+      
+    } catch (error) {
+      console.error('위촉자 데이터 로드 실패:', error);
+      this.container.innerHTML = `
+        <div style="text-align: center; padding: 40px; color: #e74c3c;">
+          <i class="fas fa-exclamation-triangle" style="font-size: 24px;"></i>
+          <p style="margin-top: 16px;">위촉자 정보를 불러올 수 없습니다.</p>
+          <button onclick="initializeApplicantViewer()" style="margin-top: 16px; padding: 8px 16px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer;">
+            다시 시도
+          </button>
+        </div>
+      `;
+    }
+  }
+
+  renderStats() {
+    const statsContainer = document.getElementById('admin-stats');
+    if (!statsContainer) return;
+
+    const totalApplicants = this.applicants.length;
+    const recentApplicants = this.applicants.filter(a => {
+      const createdAt = a.created_at?.toDate ? a.created_at.toDate() : new Date(a.created_at);
+      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      return createdAt >= weekAgo;
+    }).length;
+
+    statsContainer.innerHTML = `
+      <div class="admin-stat-card">
+        <div class="admin-stat-icon">
+          <i class="fas fa-users"></i>
+        </div>
+        <div class="admin-stat-content">
+          <div class="admin-stat-number">${totalApplicants}</div>
+          <div class="admin-stat-label">전체 위촉자</div>
+        </div>
+      </div>
+      
+      <div class="admin-stat-card">
+        <div class="admin-stat-icon">
+          <i class="fas fa-user-plus"></i>
+        </div>
+        <div class="admin-stat-content">
+          <div class="admin-stat-number">${recentApplicants}</div>
+          <div class="admin-stat-label">최근 7일</div>
+        </div>
+      </div>
+      
+      <div class="admin-stat-card">
+        <div class="admin-stat-icon">
+          <i class="fas fa-filter"></i>
+        </div>
+        <div class="admin-stat-content">
+          <div class="admin-stat-number">${this.filteredApplicants.length}</div>
+          <div class="admin-stat-label">검색 결과</div>
+        </div>
+      </div>
+    `;
+  }
+
+  async filterApplicants() {
+    if (!this.currentFilter) {
+      this.filteredApplicants = [...this.applicants];
+    } else {
+      const filter = this.currentFilter.toLowerCase();
+      this.filteredApplicants = this.applicants.filter(applicant => {
+        return (
+          (applicant.name && applicant.name.toLowerCase().includes(filter)) ||
+          (applicant.phone && applicant.phone.includes(filter)) ||
+          (applicant.managerCode && applicant.managerCode.toLowerCase().includes(filter))
+        );
+      });
+    }
+    
+    this.renderStats();
+    await this.renderCards();
+  }
+
+  async renderCards() {
+    const listContainer = document.getElementById('admin-applicant-list');
+    if (!listContainer) return;
+
+    if (this.filteredApplicants.length === 0) {
+      listContainer.innerHTML = `
+        <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #666;">
+          <i class="fas fa-search" style="font-size: 48px; margin-bottom: 20px; opacity: 0.5;"></i>
+          <p>검색 결과가 없습니다.</p>
+        </div>
+      `;
+      return;
+    }
+
+    // 담당자 정보를 미리 로드 (성능 최적화)
+    const managerCodes = [...new Set(this.filteredApplicants.map(a => a.managerCode).filter(Boolean))];
+    const managerInfoMap = new Map();
+    
+    for (const code of managerCodes) {
+      const managerInfo = await this.getManagerInfo(code);
+      if (managerInfo) {
+        managerInfoMap.set(code, managerInfo);
+      }
+    }
+
+    listContainer.innerHTML = this.filteredApplicants.map(applicant => {
+      const createdAt = applicant.created_at?.toDate ? applicant.created_at.toDate() : new Date(applicant.created_at);
+      const dateStr = createdAt.toLocaleDateString('ko-KR');
+      
+      // 담당자 정보
+      const managerInfo = managerInfoMap.get(applicant.managerCode);
+      const managerDisplay = managerInfo 
+        ? `${managerInfo.name}(${managerInfo.gaiaId || applicant.managerCode})`
+        : applicant.managerCode || '-';
+
+      // 시험 지역 정보
+      let regionDisplay = '-';
+      if (applicant.examId) {
+        const examData = this.parseExamIdToData(applicant.examId);
+        if (examData?.region) {
+          regionDisplay = examData.region;
+        }
+      }
+
+      // 시험 일정 정보
+      let examDateDisplay = '-';
+      if (applicant.examId) {
+        const examData = this.parseExamIdToData(applicant.examId);
+        if (examData?.examDate) {
+          examDateDisplay = examData.examDate;
+        }
+      }
+      
+      return `
+        <div class="admin-client-card" onclick="window.adminApplicantViewer.viewDetail('${applicant.id}')">
+          <div class="card-header">
+            <h4 class="name">${applicant.name || '이름 없음'}</h4>
+            <span class="date">${dateStr}</span>
+          </div>
+          <div class="card-body">
+            <div class="info-item">
+              <span class="label">전화번호:</span>
+              <span class="value">${applicant.phone || '-'}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">시험일:</span>
+              <span class="value">${examDateDisplay}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">시험지역:</span>
+              <span class="value">${regionDisplay}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">담당자:</span>
+              <span class="value">${managerDisplay}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  createModal() {
+    // 기존 모달 제거
+    const existingModal = document.getElementById('admin-applicant-modal');
+    if (existingModal) {
+      existingModal.remove();
+    }
+
+    // 새 모달 생성
+    const modal = document.createElement('div');
+    modal.id = 'admin-applicant-modal';
+    modal.className = 'admin-applicant-modal';
+    modal.innerHTML = `
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="admin-modal-title">위촉자 상세 정보</h3>
+          <span class="close" onclick="window.adminApplicantViewer.closeModal()">&times;</span>
+        </div>
+        <div class="modal-body" id="admin-modal-body">
+          <!-- 상세 정보가 여기에 표시됩니다 -->
+        </div>
+        <div class="modal-footer">
+          <button class="admin-secondary-btn" onclick="window.adminApplicantViewer.closeModal()">닫기</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+    this.modal = modal;
+
+    // 모달 외부 클릭시 닫기
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        this.closeModal();
+      }
+    });
+  }
+
+  async viewDetail(applicantId) {
+    const applicant = this.applicants.find(a => a.id === applicantId);
+    if (!applicant) {
+      showAlert('위촉자 정보를 찾을 수 없습니다.');
+      return;
+    }
+
+    const modalBody = document.getElementById('admin-modal-body');
+    const modalTitle = document.getElementById('admin-modal-title');
+    
+    if (!modalBody || !modalTitle) return;
+
+    modalTitle.textContent = `${applicant.name || '위촉자'}님 상세 정보`;
+
+    try {
+      // 주민등록번호 복호화
+      const decryptedSSN = applicant.ssn ? await decryptSSN(applicant.ssn) : '-';
+      
+      // 등록일 포맷팅
+      const createdAt = applicant.created_at?.toDate ? applicant.created_at.toDate() : new Date(applicant.created_at);
+      const dateStr = createdAt.toLocaleDateString('ko-KR', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
+      // 담당자 정보 로드
+      const managerInfo = await this.getManagerInfo(applicant.managerCode);
+
+      // 시험 정보 파싱
+      let examInfo = { examDate: '', region: '', applicationPeriod: '' };
+      if (applicant.examId) {
+        const examData = this.parseExamIdToData(applicant.examId);
+        if (examData) {
+          examInfo = examData;
+        }
+      }
+
+      modalBody.innerHTML = `
+        <!-- 기본 정보 -->
+        <div class="detail-section">
+          <h5><i class="fas fa-user"></i> 기본 정보</h5>
+          <div class="detail-grid">
+            <div class="detail-item">
+              <label>이름</label>
+              <span>${applicant.name || '-'}</span>
+            </div>
+            <div class="detail-item">
+              <label>주민등록번호</label>
+              <span>${decryptedSSN}</span>
+            </div>
+            <div class="detail-item full-width">
+              <label>등록일</label>
+              <span>${dateStr}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 연락처 정보 -->
+        <div class="detail-section">
+          <h5><i class="fas fa-phone"></i> 연락처 정보</h5>
+          <div class="detail-grid">
+            <div class="detail-item">
+              <label>통신사</label>
+              <span>${applicant.phoneCarrier || '-'}</span>
+            </div>
+            <div class="detail-item">
+              <label>핸드폰번호</label>
+              <span>${applicant.phone || '-'}</span>
+            </div>
+            <div class="detail-item full-width">
+              <label>이메일</label>
+              <span>${applicant.email || '-'}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 주소 정보 -->
+        <div class="detail-section">
+          <h5><i class="fas fa-map-marker-alt"></i> 주소 정보</h5>
+          <div class="detail-grid">
+            <div class="detail-item">
+              <label>우편번호</label>
+              <span>${applicant.postcode || '-'}</span>
+            </div>
+            <div class="detail-item full-width">
+              <label>주소</label>
+              <span>${applicant.address || '-'}</span>
+            </div>
+            <div class="detail-item full-width">
+              <label>상세주소</label>
+              <span>${applicant.addressDetail || '-'}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 계좌 정보 -->
+        <div class="detail-section">
+          <h5><i class="fas fa-university"></i> 계좌 정보</h5>
+          <div class="detail-grid">
+            <div class="detail-item">
+              <label>은행</label>
+              <span>${applicant.bank || '-'}</span>
+            </div>
+            <div class="detail-item">
+              <label>계좌번호</label>
+              <span>${applicant.accountNumber || '-'}</span>
+            </div>
+            <div class="detail-item">
+              <label>예금주</label>
+              <span>${applicant.accountHolder || '-'}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 학력 및 경력 -->
+        <div class="detail-section">
+          <h5><i class="fas fa-graduation-cap"></i> 학력 및 경력</h5>
+          <div class="detail-grid">
+            <div class="detail-item">
+              <label>최종 학력</label>
+              <span>${applicant.education || '-'}</span>
+            </div>
+            ${applicant.schoolName ? `
+            <div class="detail-item">
+              <label>학교명</label>
+              <span>${applicant.schoolName}</span>
+            </div>
+            ` : ''}
+            ${applicant.major ? `
+            <div class="detail-item">
+              <label>전공</label>
+              <span>${applicant.major}</span>
+            </div>
+            ` : ''}
+            <div class="detail-item">
+              <label>경력</label>
+              <span>${applicant.experience || '-'}</span>
+            </div>
+            ${applicant.experience === '경력자' ? `
+            <div class="detail-item">
+              <label>경력 연차</label>
+              <span>${applicant.experienceYears || '-'}년</span>
+            </div>
+            <div class="detail-item">
+              <label>이전 회사</label>
+              <span>${applicant.prevCompany || '-'}</span>
+            </div>
+            ` : ''}
+          </div>
+        </div>
+
+        ${applicant.examId ? `
+        <!-- 시험 일정 정보 -->
+        <div class="detail-section">
+          <h5><i class="fas fa-calendar"></i> 시험 일정 정보</h5>
+          <div class="detail-grid">
+            <div class="detail-item">
+              <label>시험명</label>
+              <span>생명보험자격시험</span>
+            </div>
+            <div class="detail-item">
+              <label>시험일</label>
+              <span>${examInfo.examDate || '미정'}</span>
+            </div>
+            <div class="detail-item">
+              <label>지역</label>
+              <span>${examInfo.region || '미정'}</span>
+            </div>
+            <div class="detail-item">
+              <label>접수 마감일</label>
+              <span>${examInfo.applicationPeriod || '미정'}</span>
+            </div>
+          </div>
+        </div>
+        ` : ''}
+
+        <!-- 도입자 정보 -->
+        <div class="detail-section">
+          <h5><i class="fas fa-user-tie"></i> 도입자 정보</h5>
+          <div class="detail-grid">
+            <div class="detail-item">
+              <label>도입자명</label>
+              <span>${managerInfo?.name || '-'}</span>
+            </div>
+            <div class="detail-item">
+              <label>도입자 코드</label>
+              <span>${applicant.managerCode || '-'} ${managerInfo?.gaiaId ? `(${managerInfo.gaiaId})` : ''}</span>
+            </div>
+            <div class="detail-item">
+              <label>팀명</label>
+              <span>${managerInfo?.team || '-'}</span>
+            </div>
+            <div class="detail-item">
+              <label>연락처</label>
+              <span>${managerInfo?.phone || '-'}</span>
+            </div>
+          </div>
+        </div>
+      `;
+
+      this.modal.style.display = 'block';
+      
+    } catch (error) {
+      console.error('상세 정보 로드 실패:', error);
+      showAlert('상세 정보를 불러오는데 실패했습니다.');
+    }
+  }
+
+  async getManagerInfo(managerCode) {
+    if (!managerCode) return null;
+    
+    try {
+      const managersRef = collection(db, 'managers');
+      const q = query(managersRef, where('code', '==', managerCode));
+      const querySnapshot = await getDocs(q);
+      
+      if (!querySnapshot.empty) {
+        const doc = querySnapshot.docs[0];
+        return doc.data();
+      }
+      return null;
+    } catch (error) {
+      console.error('담당자 정보 로드 실패:', error);
+      return null;
+    }
+  }
+
+  parseExamIdToData(examId) {
+    try {
+      const parts = examId.split('_');
+      if (parts.length !== 3) return null;
+      
+      const [examDateStr, regionCode, applicationDateStr] = parts;
+      
+      // 날짜 형식 변환
+      const examDate = this.formatDateFromString(examDateStr);
+      const applicationDate = this.formatDateFromString(applicationDateStr);
+      
+      // 지역 코드 변환
+      const region = this.getRegionFromCode(regionCode);
+      
+      if (!examDate || !region) return null;
+      
+      // 사내 마감일 계산
+      const internalDeadline = this.calculateInternalDeadline(applicationDate);
+      
+      return {
+        id: examId,
+        examDate: examDate,
+        region: region,
+        applicationPeriod: internalDeadline,
+        resultDate: '미정',
+        type: 'life_insurance'
+      };
+    } catch (error) {
+      console.error('시험 ID 파싱 실패:', examId, error);
+      return null;
+    }
+  }
+
+  /**
+   * 날짜 문자열 포맷팅 (YYYYMMDD -> YYYY-MM-DD)
+   */
+  formatDateFromString(dateStr) {
+    if (!dateStr || dateStr.length !== 8) return null;
+    
+    const year = dateStr.substring(0, 4);
+    const month = dateStr.substring(4, 6);
+    const day = dateStr.substring(6, 8);
+    
+    return `${year}-${month}-${day}`;
+  }
+
+  /**
+   * 지역 코드에서 지역명 변환
+   */
+  getRegionFromCode(regionCode) {
+    const regionMap = {
+      'SEL': '서울', 'PUS': '부산', 'ICN': '인천', 'DAE': '대구',
+      'GWJ': '광주', 'DJN': '대전', 'ULS': '울산', 'JEJ': '제주',
+      'KRL': '강릉', 'WON': '원주', 'CCN': '춘천', 'JEO': '전주',
+      'SRS': '서산', 'ALL': '전국', 'ETC': '기타'
+    };
+    
+    return regionMap[regionCode] || null;
+  }
+
+  /**
+   * 사내 마감일 계산
+   */
+  calculateInternalDeadline(applicationStartDate) {
+    try {
+      const startDate = new Date(applicationStartDate);
+      if (isNaN(startDate.getTime())) {
+        return `${applicationStartDate} 전날 11:00까지`;
+      }
+      
+      const internalDate = new Date(startDate);
+      internalDate.setDate(internalDate.getDate() - 1);
+      
+      const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+      const dayName = dayNames[internalDate.getDay()];
+      
+      const year = internalDate.getFullYear();
+      const month = String(internalDate.getMonth() + 1).padStart(2, '0');
+      const day = String(internalDate.getDate()).padStart(2, '0');
+      
+      return `${year}-${month}-${day}(${dayName}) 11:00까지`;
+    } catch (error) {
+      console.warn('내부 마감일 계산 실패:', applicationStartDate, error);
+      return '미정';
+    }
+  }
+
+  closeModal() {
+    if (this.modal) {
+      this.modal.style.display = 'none';
+    }
+  }
+
+  downloadExcel() {
+    // Excel 다운로드 기능 구현
+    console.log('Excel 다운로드 기능 - 개발 예정');
+    showAlert('Excel 다운로드 기능은 개발 예정입니다.');
+  }
+
+  destroy() {
+    if (this.modal) {
+      this.modal.remove();
+      this.modal = null;
+    }
+  }
+}
+
+// 전역 변수
+let adminApplicantViewer = null;
+
+// admin 전용 위촉자 뷰어 초기화 함수를 새로 작성
+function initializeApplicantViewer() {
+  const container = document.getElementById('applicants-container');
+  if (!container) {
+    console.error('위촉자 컨테이너를 찾을 수 없습니다.');
+    return;
+  }
+
+  // 기존 뷰어 정리
+  if (adminApplicantViewer) {
+    adminApplicantViewer.destroy();
+  }
+
+  try {
+    // admin 전용 위촉자 뷰어 생성
+    adminApplicantViewer = new AdminApplicantViewer('applicants-container');
+    window.adminApplicantViewer = adminApplicantViewer;
+    
+    // 초기화
+    adminApplicantViewer.initialize().catch(error => {
+      console.error('위촉자 뷰어 초기화 실패:', error);
+      container.innerHTML = `
+        <div style="text-align: center; padding: 40px; color: #e74c3c;">
+          <i class="fas fa-exclamation-triangle" style="font-size: 24px;"></i>
+          <p style="margin-top: 16px;">위촉자 정보를 불러올 수 없습니다.</p>
+          <button onclick="initializeApplicantViewer()" style="margin-top: 16px; padding: 8px 16px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer;">
+            다시 시도
+          </button>
+        </div>
+      `;
+    });
+    
+  } catch (error) {
+    console.error('위촉자 뷰어 생성 실패:', error);
+    container.innerHTML = `
+      <div style="text-align: center; padding: 40px; color: #e74c3c;">
+        <i class="fas fa-exclamation-triangle" style="font-size: 24px;"></i>
+        <p style="margin-top: 16px;">위촉자 뷰어를 생성할 수 없습니다.</p>
+        <button onclick="initializeApplicantViewer()" style="margin-top: 16px; padding: 8px 16px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer;">
+          다시 시도
+        </button>
+      </div>
+    `;
+  }
+}
+
 // ========== 전화번호 입력 자동 이동 기능 (HTML에서 직접 호출) ==========
 window.autoMoveToNext = autoMoveToNext;
 window.handlePhoneBackspace = handlePhoneBackspace;
+window.initializeApplicantViewer = initializeApplicantViewer;
+
+// ========== 전역 변수를 window에 노출 ==========
+window.adminApplicantViewer = null;
 

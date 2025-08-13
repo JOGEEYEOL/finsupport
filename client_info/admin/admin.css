@@ -1,15 +1,871 @@
-.admin-container {
-  max-width: 600px;
-  margin: 40px auto;
-  padding: 24px;
-  background: #fff;
-  border-radius: 10px;
-  box-shadow: 0 0 10px #0001;
+/* Manager 스타일 - 전체 화면 활용 */
+body {
+  font-family: "Noto Sans KR", sans-serif;
+  background-color: #f5f7fa;
+  color: #333;
+  line-height: 1.6;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
 }
-.admin-content {
+
+.admin-flex {
+  display: flex !important;
+  min-height: 100vh !important;
+}
+
+/* 기존 스타일 덮어쓰기 */
+#admin-content {
+  margin-top: 0 !important;
+  padding: 0 !important;
+  max-width: none !important;
+  width: 100% !important;
+}
+
+.main-content {
+  flex: 1 !important;
+  padding: 30px !important;
+  overflow-y: auto !important;
+  background-color: #f8f9fa !important;
+}
+
+/* 사이드바 스타일 (Manager와 완전히 동일) */
+.sidebar {
+  width: 280px;
+  background: white;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.sidebar-logo {
+  padding: 20px;
+  text-align: center;
+  border-bottom: 1px solid #eee;
+}
+
+.manager-info {
+  padding: 20px;
+  text-align: center;
+  border-bottom: 1px solid #eee;
+  background: #f8f9fa;
+}
+
+.manager-name {
+  font-weight: normal;
+  font-size: 16px;
+  color: #2c3e50;
+}
+
+.manager-code {
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 2px;
+}
+
+.manager-team {
+  color: #666;
+  font-size: 14px;
+}
+
+.sidebar-menu {
+  flex: 1;
+  list-style: none;
+  padding: 20px 0;
+  margin: 0;
+}
+
+.sidebar-menu li {
+  display: flex;
   align-items: center;
+  padding: 15px 25px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-left: 4px solid transparent;
+}
+
+.sidebar-menu li:hover {
+  background-color: #f8f9fa;
+  border-left-color: #667eea;
+}
+
+.sidebar-menu li.active {
+  background-color: #e3f2fd;
+  border-left-color: #667eea;
+  color: #667eea;
+}
+
+.sidebar-icon {
+  width: 20px;
+  margin-right: 15px;
+  text-align: center;
+}
+
+.sidebar-text {
+  font-weight: 500;
+}
+
+#sidebar-logout-btn {
+  flex: 1;
+  padding: 8px 12px;
+  background: #e74c3c;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 12px;
+  transition: background-color 0.3s ease;
+}
+
+#sidebar-logout-btn:hover {
+  background: #c0392b;
+}
+
+/* 메인 콘텐츠 */
+.main-content {
+  flex: 1;
+  padding: 30px;
+  overflow-y: auto;
+  background-color: #f5f7fa;
+}
+
+/* 모바일 햄버거 메뉴 스타일 (Manager와 완전히 동일) */
+.mobile-menu-toggle {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  z-index: 1001;
+  background: #667eea;
+  border: none;
+  border-radius: 8px;
+  padding: 8px;
+  cursor: pointer;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 40px;
+  height: 40px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+  display: none; /* 기본적으로 숨김 */
+}
+
+.mobile-menu-toggle:hover {
+  background: #5a6fd8;
+  transform: scale(1.05);
+}
+
+.mobile-menu-toggle span {
+  display: block;
+  width: 20px;
+  height: 2px;
+  background: white;
+  margin: 3px 0;
+  border-radius: 2px;
+  transition: all 0.3s ease;
+}
+
+.mobile-menu-toggle.active span:nth-child(1) {
+  transform: rotate(45deg) translate(5px, 5px);
+}
+
+.mobile-menu-toggle.active span:nth-child(2) {
+  opacity: 0;
+}
+
+.mobile-menu-toggle.active span:nth-child(3) {
+  transform: rotate(-45deg) translate(7px, -6px);
+}
+
+/* 모바일에서 사이드바 오버레이 */
+.sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  display: none;
+}
+
+/* 모바일 반응형 (Manager와 완전히 동일) */
+@media (max-width: 768px) {
+  /* 모바일에서 전체 화면 크기 보장 */
+  html, body {
+    height: 100% !important;
+    min-height: 100% !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+  
+  /* 로그인 화면에서는 햄버거 메뉴 숨기기 */
+  #login-form:not([style*="display: none"]) ~ #mobile-menu-toggle {
+    display: none !important;
+  }
+  
+  .mobile-menu-toggle {
+    display: flex !important;
+  }
+  
+  .admin-flex {
+    flex-direction: column;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+  
+  .sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    left: -300px;
+    width: 300px;
+    height: 100% !important;
+    min-height: 100% !important;
+    z-index: 1000;
+    transition: left 0.3s ease;
+    overflow-y: auto;
+    transform: translateZ(0); /* GPU 가속으로 레이어 분리 */
+  }
+  
+  .sidebar.open {
+    left: 0;
+  }
+  
+  .main-content {
+    order: 1;
+    padding: 80px 20px 20px 20px; /* 햄버거 버튼 공간 확보 */
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+}
+/* 콘텐츠 섹션 */
+.content-section {
+  max-width: 1200px;
+  margin: 0 auto;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  padding: 30px;
+  margin-bottom: 20px;
+}
+
+/* Admin 전용 위촉자 조회 스타일 - Manager와 동일한 구조 */
+
+/* 통계 카드 스타일 */
+.admin-stats-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.admin-stat-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.admin-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.admin-stat-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  color: white;
+}
+
+.admin-stat-card:nth-child(1) .admin-stat-icon {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.admin-stat-card:nth-child(2) .admin-stat-icon {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.admin-stat-card:nth-child(3) .admin-stat-icon {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.admin-stat-content {
+  flex: 1;
+}
+
+.admin-stat-number {
+  font-size: 28px;
+  font-weight: 700;
+  color: #2c3e50;
+  margin-bottom: 4px;
+}
+
+.admin-stat-label {
+  font-size: 14px;
+  color: #666;
+  margin-top: 4px;
+}
+
+/* 검색 영역 스타일 */
+.admin-search-area {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 30px;
+  align-items: center;
+}
+
+.admin-search-input-group {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+}
+
+.admin-search-area input {
+  flex: 1;
+  padding: 12px 16px;
+  border: 2px solid #e1e8ed;
+  border-radius: 8px;
+  font-size: 16px;
+  transition: border-color 0.3s ease;
+}
+
+.admin-search-area input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.admin-search-reset-btn {
+  padding: 12px;
+  background: #3498db;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.admin-search-reset-btn:hover {
+  background: #217dbb;
+}
+
+.admin-excel-download-btn {
+  background: #27ae60 !important;
+  color: white !important;
+  padding: 12px 16px !important;
+  border: none !important;
+  border-radius: 8px !important;
+  cursor: pointer !important;
+  transition: background-color 0.3s ease !important;
+}
+
+.admin-excel-download-btn:hover {
+  background: #1e8449 !important;
+}
+
+/* 카드 리스트 스타일 */
+.admin-card-list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.admin-client-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+}
+
+.admin-client-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  border-color: #667eea;
+}
+
+.admin-client-card .card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 15px;
+}
+
+.admin-client-card .name {
+  font-weight: bold;
+  font-size: 18px;
+  color: #2c3e50;
+  margin: 0;
+}
+
+.admin-client-card .date {
+  font-size: 12px;
+  color: #95a5a6;
+  background: #ecf0f1;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.admin-client-card .card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-client-card .info-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+}
+
+.admin-client-card .info-item .label {
+  color: #7f8c8d;
+}
+
+.admin-client-card .info-item .value {
+  color: #2c3e50;
+  font-weight: 500;
+}
+
+/* Admin 전용 모달 스타일 */
+.admin-applicant-modal {
+  display: none;
+  position: fixed;
+  z-index: 9999;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(5px);
+}
+
+.admin-applicant-modal .modal-content {
+  background-color: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 800px;
+  max-height: 90vh;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-applicant-modal .modal-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.admin-applicant-modal .modal-header h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.admin-applicant-modal .close {
+  color: white;
+  font-size: 24px;
+  font-weight: bold;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.admin-applicant-modal .close:hover {
+  opacity: 0.8;
+}
+
+.admin-applicant-modal .modal-body {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+  max-height: calc(90vh - 140px);
+}
+
+.admin-applicant-modal .modal-footer {
+  padding: 15px 20px;
+  border-top: 1px solid #ecf0f1;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.admin-applicant-modal .detail-section {
+  margin-bottom: 25px;
+}
+
+.admin-applicant-modal .detail-section h5 {
+  color: #2c3e50;
+  margin-bottom: 15px;
+  font-size: 16px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-applicant-modal .detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.admin-applicant-modal .detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.admin-applicant-modal .detail-item.full-width {
+  grid-column: span 2;
+}
+
+.admin-applicant-modal .detail-item label {
+  font-weight: 600;
+  color: #7f8c8d;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.admin-applicant-modal .detail-item span {
+  color: #2c3e50;
+  font-size: 14px;
+}
+
+.admin-secondary-btn {
+  background: #95a5a6;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.3s ease;
+}
+
+.admin-secondary-btn:hover {
+  background: #7f8c8d;
+}
+
+/* 모바일 반응형 */
+@media (max-width: 768px) {
+  .admin-stats-row {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+  
+  .admin-stat-card {
+    padding: 15px;
+  }
+  
+  .admin-stat-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+  }
+  
+  .admin-stat-number {
+    font-size: 24px;
+  }
+  
+  .admin-card-list {
+    grid-template-columns: 1fr;
+  }
+  
+  .admin-applicant-modal .modal-content {
+    width: 95%;
+    max-width: 95%;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+  
+  .admin-applicant-modal .detail-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .admin-applicant-modal .detail-item.full-width {
+    grid-column: span 1;
+  }
+
+  /* 위촉자 조회 모바일 반응형 */
+  .admin-search-area {
+    flex-direction: column;
+    gap: 12px;
+    padding: 0 15px;
+  }
+
+  .admin-search-input-group {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .admin-search-input-group input {
+    flex: 1;
+    font-size: 16px;
+    padding: 12px;
+  }
+
+  .admin-search-reset-btn {
+    padding: 12px;
+    font-size: 16px;
+    min-width: 48px;
+  }
+
+  .admin-excel-download-btn {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+  }
+
+  .admin-card-list {
+    grid-template-columns: 1fr !important;
+    gap: 15px;
+    padding: 0 15px;
+  }
+
+  .admin-applicant-card {
+    padding: 15px;
+  }
+
+  .admin-applicant-card .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .admin-applicant-card .card-header .name {
+    font-size: 16px;
+  }
+
+  .admin-applicant-card .card-header .date {
+    font-size: 12px;
+    align-self: flex-end;
+  }
+
+  .admin-applicant-card .card-body {
+    grid-template-columns: 1fr !important;
+    gap: 10px;
+  }
+}
+
+/* 위촉자 조회 - 초소형 화면 (480px 이하) */
+@media (max-width: 480px) {
+  .admin-stats-row {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 0 10px;
+  }
+
+  .admin-stat-card {
+    padding: 12px;
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .admin-stat-icon {
+    margin-bottom: 8px;
+  }
+
+  .admin-search-area {
+    padding: 0 10px;
+  }
+
+  .admin-card-list {
+    padding: 0 10px;
+    gap: 12px;
+  }
+
+  .admin-applicant-card {
+    padding: 12px;
+  }
+
+  .admin-applicant-card .card-header .name {
+    font-size: 15px;
+  }
+
+  .admin-applicant-card .card-body .info-item {
+    font-size: 13px;
+  }
+
+  .admin-applicant-modal .modal-content {
+    width: 95% !important;
+    max-width: 95% !important;
+    margin: 5% auto;
+  }
+
+  .admin-applicant-modal .modal-header {
+    padding: 15px;
+  }
+
+  .admin-applicant-modal .modal-header h3 {
+    font-size: 16px;
+  }
+
+  .admin-applicant-modal .modal-body {
+    padding: 15px;
+  }
+
+  .admin-applicant-modal .detail-section h5 {
+    font-size: 14px;
+  }
+
+  .admin-applicant-modal .detail-item label {
+    font-size: 11px;
+  }
+
+  .admin-applicant-modal .detail-item span {
+    font-size: 13px;
+  }
+}
+
+.excel-download-btn {
+  background: #27ae60;
+  color: white;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-left: 8px;
+  transition: background-color 0.3s ease;
+}
+
+.excel-download-btn:hover {
+  background: #229954;
+}
+
+.excel-download-btn:disabled {
+  background: #95a5a6;
+  cursor: not-allowed;
+}
+
+.secondary-btn {
+  background: #95a5a6;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.3s ease;
+}
+
+.secondary-btn:hover {
+  background: #7f8c8d;
+}
+
+/* 상세 정보 모달 스타일 */
+.detail-section {
+  margin-bottom: 25px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 20px;
+}
+
+.detail-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.detail-section h5 {
+  color: #2c3e50;
+  margin-bottom: 15px;
+  font-size: 16px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 15px;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detail-item.full-width {
+  grid-column: 1 / -1;
+}
+
+.detail-item label {
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 14px;
+}
+
+.detail-item span {
+  color: #555;
+  font-size: 14px;
+}
+
+/* 모바일 반응형 */
+@media (max-width: 768px) {
+  .stats-row {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .stat-card {
+    min-width: auto;
+  }
+  
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .excel-download-btn {
+    width: 100%;
+    margin-left: 0;
+    margin-top: 8px;
+  }
+}
+
+.content-section h3 {
+  color: #2c3e50;
+  margin-bottom: 30px;
+  font-size: 28px;
+  font-weight: 600;
+  text-align: center;
 }
 .search-area {
   display: flex;
@@ -48,29 +904,37 @@
 }
 .card-list, #cardList {
   width: 100%;
-  max-width: 600px;
+  max-width: 1200px;
   margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
   box-sizing: border-box;
-  padding: 16px;
+  padding: 0;
 }
 .client-card {
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
   margin: 0;
-  background: #f5f8fa;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px #0001;
-  padding: 18px 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  padding: 20px;
   cursor: pointer;
-  transition: box-shadow 0.2s;
+  transition: all 0.3s ease;
+  border: 1px solid #e9ecef;
+  border-left: 4px solid #3498db;
+}
+
+/* 위촉자 조회 섹션 내의 카드는 담당자 스타일 사용 */
+#applicants-section .client-card {
+  border-left: 4px solid #667eea;
 }
 .client-card:hover {
-  box-shadow: 0 4px 16px #0002;
-  background: #eaf6ff;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  background: #f8f9fa;
+  transform: translateY(-2px);
 }
 .client-card .name {
   font-weight: bold;
@@ -81,32 +945,11 @@
   color: #3498db;
   font-size: 15px;
 }
-/* 어드민 페이지에서만 적용되는 모달 스타일 */
-.admin-page .modal {
-  display: none;
-  position: fixed;
-  z-index: 1000;
-  left: 0;
-  top: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.4);
-  align-items: center;
-  justify-content: center;
-}
-.admin-page .modal-content {
-  background: #fff;
-  border-radius: 10px;
-  padding: 32px 24px;
-  max-width: 400px;
-  margin: 80px auto;
-  position: relative;
-  overflow-y: auto;
-  max-height: 70vh;
-  transition: none !important;
-}
+/* admin 전용 모달 스타일 제거 - manager 스타일로 통일 */
+/* admin 전용 모달 스타일 제거 - manager 스타일로 통일 */
+/* admin 모달 콘텐츠 스타일 제거 */
 
-/* 전체 수정 모달용 레이아웃 */
+/* admin 전용 모달 스타일들 제거 - manager 스타일로 통일 */
 .admin-page .modal-content.edit-modal {
   background: #fff;
   border-radius: 10px;
@@ -129,7 +972,6 @@
   padding: 0;
   max-width: 600px;
   width: 90vw;
-  margin: 40px auto;
   max-height: 85vh;
   display: flex;
   flex-direction: column;
@@ -145,7 +987,6 @@
   padding: 0;
   max-width: 600px;
   width: 90vw;
-  margin: 40px auto;
   max-height: 85vh;
   display: flex;
   flex-direction: column;
@@ -161,7 +1002,6 @@
   padding: 32px 24px !important;
   max-width: 450px !important;
   width: auto !important;
-  margin: 80px auto !important;
   max-height: 70vh !important;
   overflow-y: auto !important;
   display: block !important;
@@ -514,12 +1354,14 @@ body.login-mode #login-form {
 }
 
 .manager-item {
-  background: #f5f5f5;
+  background: white;
   padding: 8px 12px;
-  border-radius: 4px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   gap: 8px;
+  border: 1px solid #e9ecef;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .manager-item button {
@@ -535,130 +1377,46 @@ body.login-mode #login-form {
   color: #c82333;
 }
 
-/* 어드민 레이아웃 및 사이드바 스타일 */
-.admin-flex {
-  display: flex;
-  min-height: 100vh;
-  background: #f5f5f5;
-}
-.sidebar {
-  width: 220px;
-  background: #fff;
-  color: #0a3d69;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 32px 0 0 0;
-  height: 100vh;
-  position: sticky;
-  top: 0;
-}
-.sidebar-logo {
-  width: 100%;
-  text-align: center;
-  margin-bottom: 32px;
-}
-.sidebar-logo img {
-  display: inline-block;
-}
-.sidebar-menu {
-  list-style: none;
-  padding: 0;
-  width: 100%;
-}
-.sidebar-menu li {
-  padding: 18px 0 18px 32px;
-  font-size: 18px;
-  cursor: pointer;
-  transition: background 0.2s, color 0.2s;
-  color: #0a3d69;
-}
-.sidebar-menu li.active, .sidebar-menu li:hover {
-  background: #0a3d69;
-  color: #fff;
-  font-weight: bold;
-}
-.sidebar-menu li.active .sidebar-icon svg,
-.sidebar-menu li:hover .sidebar-icon svg {
-  fill: #fff !important;
-}
-.main-content {
-  flex: 1;
-  padding: 48px 32px 32px 32px;
-  min-width: 0;
-}
+/* 기존 어드민 스타일 제거됨 - Manager 스타일로 통일 */
 
 /* 담당자 관리/고객정보 영역 구분 */
+/* 기존 ID 스타일 제거 - content-section 클래스로 대체됨 */
 #manager-section, #client-section {
-  background: #fff;
-  border-radius: 10px;
-  box-shadow: 0 0 10px #0001;
-  padding: 32px 24px;
-  max-width: 600px;
-  margin: 0 auto;
+  background: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  max-width: none !important;
+  margin: 0 !important;
 }
 
 @media (max-width: 900px) {
   .admin-flex {
     flex-direction: column;
   }
+  /* Manager \uc2a4\ud0c0\uc77c \ubaa8\ubc14\uc77c \uc0ac\uc774\ub4dc\ubc14 */
   .sidebar {
     position: fixed;
-    left: -220px;
     top: 0;
-    width: 220px;
+    left: -300px;
+    width: 300px;
     height: 100vh;
-    z-index: 2000;
-    background: #fff;
-    box-shadow: 2px 0 8px #0002;
-    transition: left 0.3s;
-    padding-top: 60px;
+    z-index: 1000;
+    transition: left 0.3s ease;
+    overflow-y: auto;
   }
+  
   .sidebar.open {
     left: 0;
   }
+  
   .main-content {
-    padding: 24px 4vw;
-    min-width: 0;
-  }
-  .sidebar-menu li {
-    font-size: 16px;
-    padding: 16px 16px;
-  }
-  .sidebar-text {
-    display: none;
-  }
-  .sidebar-icon {
-    margin-right: 0;
-    display: inline-block;
-  }
-  .sidebar-toggle {
-    display: block !important;
-  }
-  .sidebar.open .sidebar-text {
-    display: inline;
+    width: 100%;
+    padding: 80px 20px 20px 20px; /* \ud584\ubc84\uac70 \ubc84\ud2bc \uacf5\uac04 \ud655\ubcf4 */
   }
 }
 
-#sidebar-logout-btn {
-  margin-top: 100%;
-  margin-bottom: 32px;
-  width: 80%;
-  background: #fff;
-  color: #0a3d69;
-  border: 2px solid #0a3d69;
-  border-radius: 12px;
-  font-size: 16px;
-  font-weight: bold;
-  padding: 12px 0;
-  cursor: pointer;
-  transition: background 0.2s, color 0.2s;
-  display: block;
-}
-#sidebar-logout-btn:hover {
-  background: #0a3d69;
-  color: #fff;
-}
+/* 기존 로그아웃 버튼 스타일 제거됨 - Manager 스타일로 통일 */
 
 /* 로그인 폼이 보일 때 사이드바/메인콘텐츠 숨김 */
 body.login-mode #sidebar,
@@ -742,6 +1500,7 @@ body.login-mode .sidebar-toggle {
     width: 100%;
     padding: 8px;
     box-sizing: border-box;
+    grid-template-columns: repeat(1, 1fr);
   }
   .client-card {
     min-width: 0;
@@ -840,13 +1599,13 @@ body.login-mode .sidebar-toggle {
   .admin-page .modal-content {
     max-width: 95vw !important;
     width: 95vw !important;
-    margin: 10px auto !important;
+    margin: 0 !important;
     max-height: 90vh !important;
   }
   
   /* 전체 수정 모달 모바일 */
   .admin-page .modal-content.edit-modal {
-    margin: 10px auto !important;
+    margin: 0 !important;
     max-height: 90vh !important;
   }
   
@@ -864,7 +1623,7 @@ body.login-mode .sidebar-toggle {
   
   /* 일반 보기 모달 모바일 */
   .admin-page .modal-content.view-modal {
-    margin: 10px auto !important;
+    margin: 0 !important;
     max-height: 90vh !important;
   }
   
@@ -884,7 +1643,7 @@ body.login-mode .sidebar-toggle {
   .admin-page .modal-content.field-modal {
     max-width: 95vw !important;
     width: 95vw !important;
-    margin: 20px auto !important;
+    margin: 0 !important;
     padding: 24px 20px !important;
   }
   
@@ -1045,13 +1804,13 @@ body.login-mode .sidebar-toggle {
     width: 98vw !important;
     min-width: 0 !important;
     box-sizing: border-box;
-    margin: 10px auto !important;
+    margin: 0 !important;
     max-height: 90vh !important;
   }
   
   /* 전체 수정 모달 700px 이하 */
   .admin-page .modal-content.edit-modal {
-    margin: 10px auto !important;
+    margin: 0 !important;
     max-height: 90vh !important;
   }
   
@@ -1069,7 +1828,7 @@ body.login-mode .sidebar-toggle {
   
   /* 일반 보기 모달 700px 이하 */
   .admin-page .modal-content.view-modal {
-    margin: 10px auto !important;
+    margin: 0 !important;
     max-height: 90vh !important;
   }
   
@@ -1089,7 +1848,7 @@ body.login-mode .sidebar-toggle {
   .admin-page .modal-content.field-modal {
     max-width: 98vw !important;
     width: 98vw !important;
-    margin: 15px auto !important;
+    margin: 0 !important;
     padding: 24px !important;
   }
   
@@ -1187,18 +1946,20 @@ body.login-mode .sidebar-toggle {
   max-width: 100%;
   box-sizing: border-box;
   margin: 0;
-  background: #f8f9fa;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px #0001;
-  padding: 18px 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  padding: 20px;
   cursor: pointer;
-  transition: box-shadow 0.2s, background 0.2s;
-  border-left: 4px solid #3498db;
+  transition: all 0.3s ease;
+  border: 1px solid #e9ecef;
+  border-left: 4px solid #667eea;
 }
 
 .manager-card:hover {
-  box-shadow: 0 4px 16px #0002;
-  background: #e8f4fd;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  background: #f8f9fa;
+  transform: translateY(-2px);
 }
 
 .manager-card .name {
@@ -1226,13 +1987,14 @@ body.login-mode .sidebar-toggle {
 }
 
 /* 담당자 정보 조회 섹션 스타일 */
+/* 기존 ID 스타일 제거 - content-section 클래스로 대체됨 */
 #manager-info-section {
-  background: #fff;
-  border-radius: 10px;
-  box-shadow: 0 0 10px #0001;
-  padding: 32px 24px;
-  max-width: 600px;
-  margin: 0 auto;
+  background: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  max-width: none !important;
+  margin: 0 !important;
 }
 
 #manager-info-section h3 {
@@ -1252,13 +2014,13 @@ body.login-mode .sidebar-toggle {
 
 #managerCardList {
   width: 100%;
-  max-width: 600px;
+  max-width: 1200px;
   margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
   box-sizing: border-box;
-  padding: 16px;
+  padding: 0;
 }
 
 /* 모바일 반응형 - 담당자 카드 */
@@ -1288,6 +2050,7 @@ body.login-mode .sidebar-toggle {
     width: 100%;
     padding: 8px;
     box-sizing: border-box;
+    grid-template-columns: repeat(1, 1fr);
   }
 }
 
@@ -1512,6 +2275,197 @@ body.login-mode .sidebar-toggle {
     font-size: 13px;
     padding: 6px 12px;
     margin: 2px;
+  }
+}
+
+/* ======== 자격시험 일정 및 위촉자 조회 섹션 스타일 (content-section 제거로 인한 보정) ======== */
+
+/* 자격시험 일정 섹션 */
+#exam-schedule-section {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+#exam-schedule-section h3 {
+  color: #2c3e50;
+  margin-bottom: 30px;
+  font-size: 28px;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* 위촉자 조회 섹션 */
+#applicants-section {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* 모바일 반응형 */
+@media (max-width: 768px) {
+  #exam-schedule-section,
+  #applicants-section {
+    padding: 16px;
+  }
+
+  #exam-schedule-section h3 {
+    font-size: 24px;
+    margin-bottom: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  #exam-schedule-section,
+  #applicants-section {
+    padding: 12px;
+  }
+
+  #exam-schedule-section h3 {
+    font-size: 20px;
+    margin-bottom: 16px;
+  }
+}
+
+/* ======== 모달 스타일 (Manager와 동일) ======== */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(5px);
+}
+
+/* 모달이 열릴 때 중앙 정렬 */
+body .modal {
+  display: none;
+}
+
+body .modal[style*="display: flex"],
+body .modal[style*="display: block"] {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* .modal-content {
+  background-color: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 80vh;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+  animation: modalSlideIn 0.3s ease;
+  position: relative;
+  padding: 20px;
+} */
+
+.large-modal {
+  max-width: 800px;
+  max-height: 90vh;
+}
+
+.modal-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.modal-header h4 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.close {
+  color: white;
+  font-size: 24px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: color 0.3s ease;
+  background: none;
+  border: none;
+}
+
+.close:hover {
+  color: #f0f0f0;
+}
+
+.modal-body {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.large-modal {
+  max-width: 800px;
+  max-height: 90vh;
+}
+
+.modal-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.modal-header h4 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.close {
+  color: white;
+  font-size: 24px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: color 0.3s ease;
+  background: none;
+  border: none;
+}
+
+.close:hover {
+  color: #f0f0f0;
+}
+
+.modal-body {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -60%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
   }
 }
 

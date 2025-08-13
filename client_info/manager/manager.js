@@ -11,14 +11,17 @@ import {
   getInsuranceCompanyType
 } from "../common/config/insurance-companies.js";
 import { ExamScheduleUI } from "../common/js/components/exam-schedule-ui.js";
+import { ApplicantViewer } from "../common/js/components/applicant-viewer.js";
 import { autoMoveToNext, handlePhoneBackspace, StringUtils } from "../common/js/utils/helpers.js";
 import { showConfirmDialog, showAlert } from "../common/js/components/modal-manager.js";
 import { auth, db, storage, functions } from "../common/js/core/firebase-config.js";
+import { decryptSSN } from "../common/js/core/encryption.js";
 
 // Firebase는 firebase-config.js에서 초기화됨
 
 // 전역 변수
 let currentManager = null;
+window.currentManager = null;
 let currentClients = [];
 let currentEditField = null;
 let currentInsuranceCompany = null;
@@ -51,6 +54,7 @@ window.login = async function() {
 
     if (result.data.manager) {
       currentManager = result.data.manager;
+      window.currentManager = currentManager;
       
       // localStorage에 로그인 정보 저장 (보안을 위해 민감하지 않은 정보만 저장)
       const sessionData = {
@@ -122,48 +126,70 @@ window.login = async function() {
 };
 
 // 로그아웃 함수
-window.logout = function(skipConfirm = false) {
+function logout(skipConfirm = false) {
   if (skipConfirm) {
     performLogout();
   } else {
-    showConfirmDialog('다시 로그인해야 합니다.', () => {
+    const confirmed = confirm('다시 로그인해야 합니다.\n\n로그아웃하시겠습니까?');
+    if (confirmed) {
       performLogout();
-    });
+    }
   }
-};
+}
+
+// 전역으로 함수 등록 (ES6 모듈 호환성)
+if (typeof window !== 'undefined') {
+  window.logout = logout;
+}
 
 function performLogout() {
-    currentManager = null;
-    currentClients = [];
-    
-    // localStorage에서 세션 정보 삭제
-    localStorage.removeItem('managerSession');
-    
-    // 로그인 폼을 원래 상태로 복원
-    const loginForm = document.getElementById('login-form');
-    loginForm.style.display = 'flex';
-    loginForm.style.position = 'fixed';
-    loginForm.style.top = '0';
-    loginForm.style.left = '0';
-    loginForm.style.width = '100%';
-    loginForm.style.height = '100%';
-    loginForm.style.alignItems = 'center';
-    loginForm.style.justifyContent = 'center';
-    loginForm.style.zIndex = '1000';
-    
-    document.getElementById('main-container').style.display = 'none';
-    
-    // 모바일 햄버거 버튼 숨기기 (로그인 화면에서는 보이지 않아야 함)
-    const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
-    if (mobileMenuToggle) {
-      mobileMenuToggle.style.display = 'none !important';
-      closeMobileMenu(); // 메뉴가 열려있다면 닫기
+    try {
+        currentManager = null;
+        window.currentManager = null;
+        currentClients = [];
+        
+        // localStorage에서 세션 정보 삭제
+        localStorage.removeItem('managerSession');
+        
+        // 로그인 폼을 원래 상태로 복원
+        const loginForm = document.getElementById('login-form');
+        if (loginForm) {
+            loginForm.style.display = 'flex';
+            loginForm.style.position = 'fixed';
+            loginForm.style.top = '0';
+            loginForm.style.left = '0';
+            loginForm.style.width = '100%';
+            loginForm.style.height = '100%';
+            loginForm.style.alignItems = 'center';
+            loginForm.style.justifyContent = 'center';
+            loginForm.style.zIndex = '1000';
+        }
+        
+        const mainContainer = document.getElementById('main-container');
+        if (mainContainer) {
+            mainContainer.style.display = 'none';
+        }
+        
+        // 모바일 햄버거 버튼 숨기기 (로그인 화면에서는 보이지 않아야 함)
+        const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+        if (mobileMenuToggle) {
+            mobileMenuToggle.style.display = 'none !important';
+            closeMobileMenu(); // 메뉴가 열려있다면 닫기
+        }
+        
+        // 입력 필드 초기화
+        const managerCodeInput = document.getElementById('manager-code');
+        const managerPasswordInput = document.getElementById('manager-password');
+        const loginError = document.getElementById('login-error');
+        
+        if (managerCodeInput) managerCodeInput.value = '';
+        if (managerPasswordInput) managerPasswordInput.value = '';
+        if (loginError) loginError.style.display = 'none';
+        
+    } catch (error) {
+        console.error('performLogout 실행 중 오류 발생:', error);
+        alert('로그아웃 중 오류가 발생했습니다: ' + error.message);
     }
-    
-    // 입력 필드 초기화
-    document.getElementById('manager-code').value = '';
-    document.getElementById('manager-password').value = '';
-    document.getElementById('login-error').style.display = 'none';
 }
 
 // 에러 메시지 표시 함수
@@ -217,7 +243,7 @@ async function loadManagerClients() {
 
   try {
     const clientsRef = collection(db, 'client_info');
-    const q = query(clientsRef, where('manager', '==', currentManager.name), orderBy('created_at', 'desc'));
+    const q = query(clientsRef, where('manager', '==', currentManager.name));
     
     onSnapshot(q, (snapshot) => {
       currentClients = [];
@@ -227,6 +253,14 @@ async function loadManagerClients() {
           ...doc.data()
         });
       });
+      
+      // 클라이언트에서 최신순 정렬 (created_at 기준)
+      currentClients.sort((a, b) => {
+        const dateA = a.created_at?.toDate ? a.created_at.toDate() : new Date(a.created_at || 0);
+        const dateB = b.created_at?.toDate ? b.created_at.toDate() : new Date(b.created_at || 0);
+        return dateB - dateA; // 최신순 (내림차순)
+      });
+      
       renderClientList();
     });
   } catch (error) {
@@ -284,30 +318,7 @@ function renderClientList(searchTerm = '') {
   }).join('');
 }
 
-// 주민등록번호 복호화 함수
-async function decryptSSN(encryptedSSN) {
-  if (!encryptedSSN) return '-';
-  
-  try {
-    // 이미 평문인 경우 (길이가 짧거나 특수문자 포함)
-    if (encryptedSSN.length < 16 || encryptedSSN.includes('-')) {
-      return encryptedSSN;
-    }
-    
-    // Firebase Functions를 통해 복호화
-    const decryptSSNFunction = httpsCallable(functions, 'decryptSSN');
-    const result = await decryptSSNFunction({ ssn: encryptedSSN });
-    
-    if (result.data && result.data.ssn) {
-      return result.data.ssn;
-    } else {
-      return encryptedSSN;
-    }
-  } catch (error) {
-    console.error('주민등록번호 복호화 실패:', error);
-    return encryptedSSN;
-  }
-}
+
 
 
 // 파일 크기 포맷팅 함수
@@ -994,7 +1005,7 @@ window.saveEdit = async function() {
 };
 
 // 비밀번호 변경 모달 열기
-window.changePassword = function() {
+function changePassword() {
   const modal = document.getElementById('passwordModal');
   
   // 입력 필드 초기화
@@ -1040,7 +1051,12 @@ window.changePassword = function() {
       modalTitle.style.color = 'white';
     }
   }
-};
+}
+
+// 전역으로 함수 등록 (ES6 모듈 호환성)
+if (typeof window !== 'undefined') {
+  window.changePassword = changePassword;
+}
 
 // 비밀번호 모달 엔터키 핸들러
 window.handlePasswordModalEnter = function(event) {
@@ -1051,7 +1067,7 @@ window.handlePasswordModalEnter = function(event) {
 };
 
 // 비밀번호 변경 저장
-window.savePassword = async function() {
+async function savePassword() {
   const currentPassword = document.getElementById('current-password').value;
   const newPassword = document.getElementById('new-password').value;
   const confirmPassword = document.getElementById('confirm-password').value;
@@ -1128,10 +1144,15 @@ window.savePassword = async function() {
       saveBtn.innerHTML = '변경';
     }
   }
-};
+}
+
+// 전역으로 함수 등록 (ES6 모듈 호환성)
+if (typeof window !== 'undefined') {
+  window.savePassword = savePassword;
+}
 
 // 보험사 계정 수정
-window.editInsuranceAccount = function(companyKey, companyName) {
+function editInsuranceAccount(companyKey, companyName) {
   currentInsuranceCompany = companyKey;
   const modal = document.getElementById('insuranceModal');
   const title = document.getElementById('insurance-modal-title');
@@ -1162,10 +1183,15 @@ window.editInsuranceAccount = function(companyKey, companyName) {
   
   // 백그라운드 스크롤 방지
   document.body.style.overflow = 'hidden';
-};
+}
+
+// 전역으로 함수 등록 (ES6 모듈 호환성)
+if (typeof window !== 'undefined') {
+  window.editInsuranceAccount = editInsuranceAccount;
+}
 
 // 보험사 계정 저장
-window.saveInsuranceAccount = async function() {
+async function saveInsuranceAccount() {
   if (!currentInsuranceCompany) return;
 
   const employeeId = document.getElementById('insurance-employee-id').value.trim();
@@ -1199,18 +1225,28 @@ window.saveInsuranceAccount = async function() {
     console.error('보험사 계정 저장 실패:', error);
     alert('보험사 계정 정보 저장에 실패했습니다.');
   }
-};
+}
+
+// 전역으로 함수 등록 (ES6 모듈 호환성)
+if (typeof window !== 'undefined') {
+  window.saveInsuranceAccount = saveInsuranceAccount;
+}
 
 // 모달 닫기 함수들
-window.closeEditModal = function() {
+function closeEditModal() {
   document.getElementById('editModal').style.display = 'none';
   currentEditField = null;
   
   // 백그라운드 스크롤 복원
   document.body.style.overflow = '';
-};
+}
 
-window.closePasswordModal = function() {
+// 전역으로 함수 등록 (ES6 모듈 호환성)
+if (typeof window !== 'undefined') {
+  window.closeEditModal = closeEditModal;
+}
+
+function closePasswordModal() {
   // 초기 비밀번호 사용자는 비밀번호 변경 완료 전까지 모달을 닫을 수 없음
   const isInitialPassword = document.getElementById('manager-password').value === '0000';
   if (isInitialPassword) {
@@ -1240,9 +1276,14 @@ window.closePasswordModal = function() {
   
   // 백그라운드 스크롤 복원
   document.body.style.overflow = '';
-};
+}
 
-window.closeClientModal = function() {
+// 전역으로 함수 등록 (ES6 모듈 호환성)
+if (typeof window !== 'undefined') {
+  window.closePasswordModal = closePasswordModal;
+}
+
+function closeClientModal() {
   document.getElementById('clientModal').style.display = 'none';
   // 수정 모드 상태 초기화
   isEditingClient = false;
@@ -1250,13 +1291,18 @@ window.closeClientModal = function() {
   
   // 백그라운드 스크롤 복원
   document.body.style.overflow = '';
-};
+}
+
+// 전역으로 함수 등록 (ES6 모듈 호환성)
+if (typeof window !== 'undefined') {
+  window.closeClientModal = closeClientModal;
+}
 
 // 섹션별 수정 모드
 let currentEditingSection = null;
 
 // 섹션별 편집 함수
-window.editSection = function(sectionName) {
+function editSection(sectionName) {
   if (currentEditingSection === sectionName) {
     // 이미 편집 중인 섹션이면 저장
     saveSectionChanges(sectionName);
@@ -1268,7 +1314,12 @@ window.editSection = function(sectionName) {
     // 새 섹션 편집 시작
     startEditingSection(sectionName);
   }
-};
+}
+
+// 전역으로 함수 등록 (ES6 모듈 호환성)
+if (typeof window !== 'undefined') {
+  window.editSection = editSection;
+}
 
 // 섹션 편집 시작
 function startEditingSection(sectionName) {
@@ -1494,6 +1545,7 @@ async function restoreSession() {
     const managerData = await getManagerByCode(session.code);
     if (managerData) {
       currentManager = managerData;
+      window.currentManager = currentManager;
       
       // 메인 페이지 표시 (로딩 화면은 DOMContentLoaded에서 숨김)
       document.getElementById('login-form').style.display = 'none';
@@ -1573,6 +1625,29 @@ document.addEventListener('DOMContentLoaded', async function() {
     hideLoadingScreen();
   }
   
+  // 전역 함수들을 다시 한번 확실하게 등록
+  if (typeof window !== 'undefined') {
+    window.logout = logout;
+    window.changePassword = changePassword;
+    window.savePassword = savePassword;
+  }
+  
+  // 로그아웃 및 비밀번호 변경 버튼 이벤트
+  const logoutBtn = document.getElementById('sidebar-logout-btn');
+  const passwordBtn = document.getElementById('sidebar-password-btn');
+  
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', function() {
+      logout();
+    });
+  }
+  
+  if (passwordBtn) {
+    passwordBtn.addEventListener('click', function() {
+      changePassword();
+    });
+  }
+
   // 모바일 햄버거 메뉴 이벤트
   const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
   const sidebar = document.getElementById('sidebar');
@@ -1618,6 +1693,17 @@ document.addEventListener('DOMContentLoaded', async function() {
     initializeExamSchedule();
   });
 
+  document.getElementById('menu-applicants').addEventListener('click', async function() {
+    showSection('applicants-section');
+    setActiveMenu('menu-applicants');
+    closeMobileMenu(); // 모바일에서 메뉴 선택 시 사이드바 닫기
+    
+    // 위촉자 조회 컴포넌트 초기화
+    if (!applicantViewer) {
+      await initApplicantViewer();
+    }
+  });
+
 
   // 고객 검색
   const clientSearch = document.getElementById('client-search');
@@ -1652,6 +1738,23 @@ document.addEventListener('DOMContentLoaded', async function() {
       currentInsuranceSearchTerm = '';
       renderInsuranceList(lifeInsuranceCompanies, 'life-insurance-list');
       renderInsuranceList(nonLifeInsuranceCompanies, 'nonlife-insurance-list');
+    });
+  }
+
+  // 위촉자 검색
+  const applicantSearch = document.getElementById('applicant-search');
+  if (applicantSearch) {
+    applicantSearch.addEventListener('input', function(e) {
+      const searchTerm = e.target.value.toLowerCase();
+      filterApplicants(searchTerm);
+    });
+  }
+
+  const applicantSearchReset = document.getElementById('applicant-search-reset');
+  if (applicantSearchReset) {
+    applicantSearchReset.addEventListener('click', function() {
+      applicantSearch.value = '';
+      filterApplicants('');
     });
   }
 
@@ -1903,6 +2006,161 @@ function initializeExamSchedule() {
   
   examScheduleUI.initialize();
 }
+
+// ========== 토스트 메시지 ==========
+function showToast(message, type = 'info') {
+  // 기존 토스트가 있으면 제거
+  const existingToast = document.querySelector('.toast');
+  if (existingToast) {
+    existingToast.remove();
+  }
+  
+  // 토스트 요소 생성
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = message;
+  
+  // 타입별 스타일 설정
+  const colors = {
+    success: '#27ae60',
+    error: '#e74c3c', 
+    info: '#3498db',
+    warning: '#f39c12'
+  };
+  
+  toast.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: ${colors[type] || colors.info};
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    z-index: 10000;
+    transform: translateX(400px);
+    transition: all 0.3s ease;
+    max-width: 300px;
+    word-wrap: break-word;
+  `;
+  
+  document.body.appendChild(toast);
+  
+  // 애니메이션으로 나타나기
+  setTimeout(() => {
+    toast.style.transform = 'translateX(0)';
+  }, 10);
+  
+  // 3초 후 사라지기
+  setTimeout(() => {
+    toast.style.transform = 'translateX(400px)';
+    setTimeout(() => {
+      if (toast.parentNode) {
+        toast.parentNode.removeChild(toast);
+      }
+    }, 300);
+  }, 3000);
+}
+
+// ========== 위촉자 신청 관련 ==========
+// 위촉자 신청 링크 복사 함수
+window.copyApplicantLink = function(url, examDate, buttonElement) {
+  // 버튼 요소가 전달되지 않은 경우 이벤트를 통해 찾기
+  if (!buttonElement) {
+    buttonElement = event.target;
+  }
+  
+  // 버튼 상태 변경 함수
+  function updateButtonState(button, text, color, icon) {
+    if (button) {
+      button.innerHTML = `<i class="${icon}"></i> ${text}`;
+      if (color) {
+        button.style.background = color;
+      }
+    }
+  }
+  
+  // 원본 버튼 내용 저장
+  const originalHTML = buttonElement.innerHTML;
+  const originalBackground = buttonElement.style.background;
+  
+  // 복사 중 표시
+  updateButtonState(buttonElement, '복사중...', 'linear-gradient(135deg, #3498db 0%, #2980b9 100%)', 'fas fa-spinner fa-spin');
+  
+  // 클립보드에 URL 복사
+  navigator.clipboard.writeText(url).then(() => {
+    // 성공 표시
+    updateButtonState(buttonElement, '복사됨!', 'linear-gradient(135deg, #27ae60 0%, #2ecc71 100%)', 'fas fa-check');
+    
+    // 토스트 메시지 표시
+    showToast(`📋 신청 링크가 복사되었습니다!`, 'success');
+    
+    // 2초 후 원래 상태로 복원
+    setTimeout(() => {
+      buttonElement.innerHTML = originalHTML;
+      buttonElement.style.background = originalBackground;
+    }, 2000);
+  }).catch(err => {
+    console.error('링크 복사 실패:', err);
+    // 클립보드 API가 지원되지 않는 경우 fallback
+    const textArea = document.createElement('textarea');
+    textArea.value = url;
+    document.body.appendChild(textArea);
+    textArea.select();
+    try {
+      document.execCommand('copy');
+      // 성공 표시
+      updateButtonState(buttonElement, '복사됨!', 'linear-gradient(135deg, #27ae60 0%, #2ecc71 100%)', 'fas fa-check');
+      showToast(`📋 신청 링크가 복사되었습니다!`, 'success');
+      
+      // 2초 후 원래 상태로 복원
+      setTimeout(() => {
+        buttonElement.innerHTML = originalHTML;
+        buttonElement.style.background = originalBackground;
+      }, 2000);
+    } catch (err) {
+      // 실패 표시
+      updateButtonState(buttonElement, '실패', 'linear-gradient(135deg, #e74c3c 0%, #c0392b 100%)', 'fas fa-times');
+      showToast(`❌ 링크 복사에 실패했습니다`, 'error');
+      
+      // 3초 후 원래 상태로 복원
+      setTimeout(() => {
+        buttonElement.innerHTML = originalHTML;
+        buttonElement.style.background = originalBackground;
+      }, 3000);
+    }
+    document.body.removeChild(textArea);
+  });
+};
+
+// ========== 위촉자 조회 관련 ==========
+let applicantViewer = null;
+
+// 위촉자 조회 컴포넌트 초기화
+async function initApplicantViewer() {
+  if (!currentManager) {
+    showAlert('담당자 로그인이 필요합니다.');
+    return;
+  }
+
+  try {
+    // 기존 컴포넌트가 있으면 파괴
+    if (applicantViewer) {
+      applicantViewer.destroy();
+    }
+
+    // ApplicantViewer 컴포넌트 생성 (manager용)
+    applicantViewer = ApplicantViewer.createForManager('applicants-section', currentManager);
+    await applicantViewer.initialize();
+
+  } catch (error) {
+    console.error('위촉자 조회 컴포넌트 초기화 실패:', error);
+    showAlert('위촉자 조회 기능을 초기화할 수 없습니다.');
+  }
+}
+
 
 // ========== 전화번호 입력 자동 이동 기능 (helpers.js에서 import) ==========
 window.autoMoveToNext = autoMoveToNext;

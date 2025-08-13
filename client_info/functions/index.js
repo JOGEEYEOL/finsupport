@@ -325,6 +325,133 @@ exports.saveClientInfo = functions.https.onCall(async (data, context) => {
   }
 });
 
+// 위촉자 정보 저장 함수 (서버에서 암호화)
+exports.saveApplicantInfo = functions.https.onCall(async (data, context) => {
+  try {
+    // 실제 위촉자 데이터는 data.data에 있음
+    const applicantData = data.data || data;
+
+    // 순수 JSON만 남기기 (Firestore에 저장 불가능한 필드 제거)
+    const cleanData = {...applicantData};
+    if (cleanData.rawRequest) delete cleanData.rawRequest;
+    if (cleanData.req) delete cleanData.req;
+    if (cleanData.request) delete cleanData.request;
+    if (cleanData.response) delete cleanData.response;
+
+    // 주민등록번호가 평문으로 전송된 경우 암호화
+    if (cleanData.ssn && !cleanData.ssn.startsWith("U2F")) { // 암호화된 형태가 아닌 경우
+      const encryptKey = getEncryptKey();
+      if (!encryptKey) {
+        throw new functions.https.HttpsError(
+          "internal",
+          "암호화 키가 설정되지 않았습니다.",
+        );
+      }
+      cleanData.ssn = CryptoJS.AES.encrypt(cleanData.ssn, encryptKey).toString();
+    }
+
+    const createdAt = admin.firestore.FieldValue.serverTimestamp();
+    await admin
+      .firestore()
+      .collection("applicants")
+      .add(
+        Object.assign(
+          {},
+          cleanData,
+          {
+            created_at: createdAt,
+          },
+        ),
+      );
+
+    return {
+      message: "위촉자 정보 저장 완료!",
+    };
+  } catch (err) {
+    throw new functions.https.HttpsError(
+      "internal",
+      "저장 실패: " + err.message,
+    );
+  }
+});
+
+// 위촉자 중복 체크 함수
+exports.checkApplicantDuplicate = functions.https.onCall(async (data, context) => {
+  try {
+    // Firebase Callable Functions는 data.data에 실제 데이터를 래핑
+    const actualData = data.data || data;
+    const {name, phone, email} = actualData;
+
+    console.log("checkApplicantDuplicate 호출됨, 받은 데이터:", data);
+    console.log("actualData:", actualData);
+    console.log("name:", name, "phone:", phone, "email:", email);
+
+    if (!name || !phone) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "이름과 핸드폰번호가 필요합니다.",
+      );
+    }
+
+    // applicants 컬렉션에서 중복 체크
+    const applicantsRef = admin.firestore().collection("applicants");
+
+    // 이름과 핸드폰번호로 중복 체크 (가장 일반적)
+    const namePhoneQuery = await applicantsRef
+      .where("name", "==", name)
+      .where("phone", "==", phone)
+      .get();
+
+    if (!namePhoneQuery.empty) {
+      return {
+        isDuplicate: true,
+        duplicateType: "name_phone",
+        message: "동일한 이름과 핸드폰번호로 이미 등록된 정보가 있습니다.",
+      };
+    }
+
+    // 핸드폰번호 단독 중복 체크 (핸드폰은 고유함)
+    const phoneQuery = await applicantsRef
+      .where("phone", "==", phone)
+      .get();
+
+    if (!phoneQuery.empty) {
+      return {
+        isDuplicate: true,
+        duplicateType: "phone_only",
+        message: "동일한 핸드폰번호로 이미 등록된 정보가 있습니다.",
+      };
+    }
+
+    // 이메일이 있는 경우 이름과 이메일로도 중복 체크
+    if (email && email.trim()) {
+      const nameEmailQuery = await applicantsRef
+        .where("name", "==", name)
+        .where("email", "==", email.trim())
+        .get();
+
+      if (!nameEmailQuery.empty) {
+        return {
+          isDuplicate: true,
+          duplicateType: "name_email",
+          message: "동일한 이름과 이메일로 이미 등록된 정보가 있습니다.",
+        };
+      }
+    }
+
+    return {
+      isDuplicate: false,
+      message: "중복되지 않는 정보입니다.",
+    };
+  } catch (error) {
+    console.error("중복 체크 중 오류 발생:", error);
+    throw new functions.https.HttpsError(
+      "internal",
+      "중복 체크 처리 중 오류가 발생했습니다: " + error.message,
+    );
+  }
+});
+
 // 마이그레이션 모드 설정 조회 함수
 exports.getMigrationMode = functions.https.onCall(async (data, context) => {
   // 임시: 인증 체크 완화 (클라이언트 인증 문제 해결 후 제거 예정)

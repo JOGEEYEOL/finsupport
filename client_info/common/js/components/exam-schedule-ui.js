@@ -337,7 +337,7 @@ export class ExamScheduleUI {
         <h4 style="background: #f8f9fa; padding: 12px 20px; margin: 0 0 16px 0; border-left: 4px solid #3498db; color: #2c3e50; font-weight: 600;">
           ${region} (${regionSchedules.length}건)
         </h4>
-        ${this.generateScheduleTable(regionSchedules)}
+        ${this.generateScheduleTable(regionSchedules, region)}
       </div>
     `;
   }
@@ -345,13 +345,13 @@ export class ExamScheduleUI {
   /**
    * 스케줄 테이블 생성
    */
-  generateScheduleTable(schedules) {
+  generateScheduleTable(schedules, region) {
     // 모바일 환경 감지
     const isMobile = window.innerWidth <= 768;
     
     if (isMobile) {
       // 모바일에서는 카드 레이아웃 사용
-      return this.generateMobileCardLayout(schedules);
+      return this.generateMobileCardLayout(schedules, region);
     }
     
     // 접수기간별로 그룹화
@@ -367,14 +367,22 @@ export class ExamScheduleUI {
       // 우리 회사 내부 마감일 계산
       const internalDeadline = this.calculateInternalDeadline(applicationPeriod);
       
+      // 접수 가능 여부 판단 (그룹 전체)
+      const now = new Date();
+      const internalDeadlineDate = this.parseInternalDeadlineDate(applicationPeriod);
+      const isGroupExpired = groupSchedules.every(schedule => new Date(schedule.examDate) < now);
+      const isGroupDeadlinePassed = internalDeadlineDate && internalDeadlineDate < now;
+      
+      // 그룹별 버튼은 제거하고 개별 시험일별 버튼만 사용
+
       tableHTML += `
         <div style="margin-bottom: 24px;">
           <div style="background: #f39c12; color: white; padding: 12px 20px; border-radius: 8px 8px 0 0; font-weight: 600;">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-              <span><i class="fas fa-exclamation-triangle"></i> 사내 접수 마감: ${internalDeadline}</span>
-              <span style="background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 12px; font-size: 13px;">
+            <div class="exam-header-grid" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+              <div style="font-size: 14px; flex: 1; min-width: 200px;"><i class="fas fa-exclamation-triangle"></i> 사내 접수 마감: ${internalDeadline}</div>
+              <div style="background: rgba(255,255,255,0.2); padding: 6px 14px; border-radius: 12px; font-size: 12px; white-space: nowrap; font-weight: 500;">
                 <i class="fas fa-calendar-alt"></i> 협회 접수기간: ${applicationPeriod}
-              </span>
+              </div>
             </div>
           </div>
           <table style="width: 100%; border-collapse: collapse; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-radius: 0 0 8px 8px; overflow: hidden;">
@@ -383,6 +391,7 @@ export class ExamScheduleUI {
                 <th style="padding: 12px; text-align: center; font-weight: 600;">시험일</th>
                 <th style="padding: 12px; text-align: center; font-weight: 600;">합격자발표</th>
                 <th style="padding: 12px; text-align: center; font-weight: 600;">상태</th>
+                <th style="padding: 12px; text-align: center; font-weight: 600;">신청</th>
               </tr>
             </thead>
             <tbody>
@@ -415,6 +424,52 @@ export class ExamScheduleUI {
         // '열기' 텍스트 제거
         const cleanExamDate = (schedule.examDate || '미정').replace(/\s*열기\s*$/, '').trim();
         
+        // 개별 시험일용 examId 생성
+        const individualExamId = this.generateExamId(schedule, region);
+        
+        // 어드민 모드와 담당자 모드에 따라 URL 생성
+        let individualApplicantUrl;
+        if (this.options.isAdminMode) {
+          // 어드민 모드: 시험 정보만 포함 (담당자 코드 없음)
+          individualApplicantUrl = `${window.location.origin}/applicant/?exam=${individualExamId}`;
+        } else {
+          // 담당자 모드: 시험 정보 + 담당자 코드 포함
+          const managerCode = window.currentManager?.code || 'UNKNOWN';
+          individualApplicantUrl = `${window.location.origin}/applicant/?exam=${individualExamId}&manager=${managerCode}`;
+        }
+        
+        // 개별 신청 버튼 생성
+        let individualApplyButton = '';
+        if (!isExpired && !isInternalDeadlinePassed) {
+          individualApplyButton = `
+            <button 
+              onclick="copyApplicantLink('${individualApplicantUrl}', '${cleanExamDate}', this)"
+              style="
+                background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+                color: white;
+                border: none;
+                padding: 6px 12px;
+                border-radius: 12px;
+                font-size: 11px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                box-shadow: 0 2px 4px rgba(39, 174, 96, 0.2);
+              "
+              onmouseover="this.style.transform='translateY(-1px)'"
+              onmouseout="this.style.transform='translateY(0)'"
+            >
+              <i class="fas fa-copy"></i> 신청링크
+            </button>
+          `;
+        } else {
+          individualApplyButton = `
+            <span style="color: #bbb; font-size: 10px;">
+              <i class="fas fa-times"></i> 마감
+            </span>
+          `;
+        }
+        
         tableHTML += `
           <tr style="background: ${rowBg}; border-bottom: 1px solid #ecf0f1;">
             <td style="padding: 12px; text-align: center; color: #2c3e50; font-weight: 500;">${cleanExamDate}</td>
@@ -423,6 +478,9 @@ export class ExamScheduleUI {
               <span style="background: ${statusColor}; color: white; padding: 4px 12px; border-radius: 16px; font-size: 12px; font-weight: 600;">
                 ${statusText}
               </span>
+            </td>
+            <td style="padding: 12px; text-align: center;">
+              ${individualApplyButton}
             </td>
           </tr>
         `;
@@ -538,7 +596,7 @@ export class ExamScheduleUI {
   /**
    * 모바일용 카드 레이아웃 생성
    */
-  generateMobileCardLayout(schedules) {
+  generateMobileCardLayout(schedules, region) {
     // 접수기간별로 그룹화
     const groupedSchedules = this.groupByApplicationPeriod(schedules);
     
@@ -549,6 +607,14 @@ export class ExamScheduleUI {
       
       // 우리 회사 내부 마감일 계산
       const internalDeadline = this.calculateInternalDeadline(applicationPeriod);
+      
+      // 접수 가능 여부 판단 (그룹 전체) - 모바일용
+      const now = new Date();
+      const internalDeadlineDate = this.parseInternalDeadlineDate(applicationPeriod);
+      const isGroupExpired = groupSchedules.every(schedule => new Date(schedule.examDate) < now);
+      const isGroupDeadlinePassed = internalDeadlineDate && internalDeadlineDate < now;
+      
+      // 모바일에서도 개별 시험일별 버튼만 사용
       
       cardHTML += `
         <div style="margin-bottom: 20px;">
@@ -586,6 +652,51 @@ export class ExamScheduleUI {
         // '열기' 텍스트 제거
         const cleanExamDate = (schedule.examDate || '미정').replace(/\s*열기\s*$/, '').trim();
         
+        // 모바일용 개별 버튼 생성
+        const mobileIndividualExamId = this.generateExamId(schedule, region);
+        
+        // 어드민 모드와 담당자 모드에 따라 모바일 URL 생성
+        let mobileIndividualApplicantUrl;
+        if (this.options.isAdminMode) {
+          // 어드민 모드: 시험 정보만 포함 (담당자 코드 없음)
+          mobileIndividualApplicantUrl = `${window.location.origin}/applicant/?exam=${mobileIndividualExamId}`;
+        } else {
+          // 담당자 모드: 시험 정보 + 담당자 코드 포함
+          const mobileManagerCode = window.currentManager?.code || 'UNKNOWN';
+          mobileIndividualApplicantUrl = `${window.location.origin}/applicant/?exam=${mobileIndividualExamId}&manager=${mobileManagerCode}`;
+        }
+        
+        let mobileIndividualApplyButton = '';
+        if (!isExpired && !isInternalDeadlinePassed) {
+          mobileIndividualApplyButton = `
+            <button 
+              onclick="copyApplicantLink('${mobileIndividualApplicantUrl}', '${cleanExamDate}', this)"
+              style="
+                background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+                color: white;
+                border: none;
+                padding: 8px 12px;
+                border-radius: 8px;
+                font-size: 11px;
+                font-weight: 600;
+                cursor: pointer;
+                width: 100%;
+                margin-top: 8px;
+                transition: all 0.3s ease;
+                box-shadow: 0 2px 4px rgba(39, 174, 96, 0.2);
+              "
+            >
+              <i class="fas fa-copy"></i> 링크복사
+            </button>
+          `;
+        } else {
+          mobileIndividualApplyButton = `
+            <div style="text-align: center; margin-top: 8px; color: #bbb; font-size: 10px;">
+              <i class="fas fa-times"></i> 마감
+            </div>
+          `;
+        }
+        
         cardHTML += `
           <div style="background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
@@ -598,6 +709,7 @@ export class ExamScheduleUI {
             <div style="font-size: 12px; color: #666; margin-bottom: 4px;">
               <i class="fas fa-trophy" style="width: 14px;"></i> 합격자발표: <span style="color: #2c3e50;">${schedule.resultDate || '미정'}</span>
             </div>
+            ${mobileIndividualApplyButton}
           </div>
         `;
       });
@@ -622,6 +734,52 @@ export class ExamScheduleUI {
         <p>${message}</p>
       </div>
     `;
+  }
+
+  /**
+   * 시험 고유 ID 생성
+   */
+  generateExamId(schedule, region) {
+    // 시험일에서 날짜 부분만 추출
+    const cleanExamDate = (schedule.examDate || '미정').replace(/\s*열기\s*$/, '').trim();
+    const dateMatch = cleanExamDate.match(/(\d{4}-\d{2}-\d{2})/);
+    const dateStr = dateMatch ? dateMatch[1] : cleanExamDate.replace(/[^\d-]/g, '');
+    
+    // 지역 코드 생성
+    const regionCode = this.getRegionCode(region);
+    
+    // 접수기간에서 시작일 추출
+    const applicationMatch = schedule.applicationPeriod?.match(/(\d{4}-\d{2}-\d{2})/);
+    const applicationStr = applicationMatch ? applicationMatch[1] : '';
+    
+    // ID 생성: YYYYMMDD_REGION_APPLICATION
+    const examId = `${dateStr.replace(/-/g, '')}_${regionCode}_${applicationStr.replace(/-/g, '')}`;
+    
+    return examId;
+  }
+  
+  /**
+   * 지역 코드 생성
+   */
+  getRegionCode(region) {
+    const regionCodes = {
+      '서울': 'SEL',
+      '부산': 'PUS', 
+      '인천': 'ICN',
+      '대구': 'DAE',
+      '광주': 'GWJ',
+      '대전': 'DJN',
+      '울산': 'ULS',
+      '제주': 'JEJ',
+      '강릉': 'KRL',
+      '원주': 'WON',
+      '춘천': 'CCN',
+      '전주': 'JEO',
+      '서산': 'SRS',
+      '전국': 'ALL'
+    };
+    
+    return regionCodes[region] || 'ETC';
   }
 
   /**

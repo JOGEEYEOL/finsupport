@@ -21,9 +21,14 @@
   </head>
   <body class="admin-page">
     <!-- 햄버거 메뉴 버튼 (모바일용) -->
-    <button id="sidebar-toggle" class="sidebar-toggle" aria-label="메뉴 열기">
-      <svg width="32" height="32" viewBox="0 0 32 32"><rect y="6" width="32" height="4" rx="2"/><rect y="14" width="32" height="4" rx="2"/><rect y="22" width="32" height="4" rx="2"/></svg>
+    <button id="mobile-menu-toggle" class="mobile-menu-toggle" aria-label="메뉴 열기">
+      <span></span>
+      <span></span>
+      <span></span>
     </button>
+    
+    <!-- 사이드바 오버레이 (모바일용) -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
     <!-- 로그인 폼: 항상 최상위에 위치 -->
     <div id="login-form">
       <div class="login-box">
@@ -37,27 +42,35 @@
         <button id="login-btn" type="button" onclick="login()">로그인</button>
       </div>
     </div>
-    <div class="container admin-flex">
+    <div class="admin-flex">
       <div class="sidebar" id="sidebar">
         <div class="sidebar-logo">
           <img src="../common/assets/owners_logo.png" alt="로고" style="height:80px;" />
         </div>
+        <div class="manager-info" style="padding: 20px; text-align: center; border-bottom: 1px solid #eee; background: #f8f9fa;">
+          <div class="manager-name" style="font-weight: bold; font-size: 18px; color: #2c3e50; margin-bottom: 4px;">관리자</div>
+          <div class="manager-code" style="color: #666; font-size: 14px; margin-bottom: 2px;">ADMIN</div>
+          <div class="manager-team" style="color: #666; font-size: 14px;">관리팀</div>
+          <div style="display: flex; gap: 10px; margin-top: 15px;">
+            <button id="sidebar-logout-btn" onclick="logout()">로그아웃</button>
+          </div>
+        </div>
         <ul class="sidebar-menu">
           <li id="menu-managers" class="active">
             <span class="sidebar-icon" aria-hidden="true">
-              <svg width="20" height="20" viewBox="0 0 20 20"><circle cx="10" cy="7" r="4"/><rect x="3" y="13" width="14" height="5" rx="2"/></svg>
+              <i class="fas fa-user"></i>
             </span>
             <span class="sidebar-text">담당자 관리</span>
           </li>
           <li id="menu-clients">
             <span class="sidebar-icon" aria-hidden="true">
-              <svg width="20" height="20" viewBox="0 0 20 20"><rect x="2" y="4" width="16" height="12" rx="2"/><rect x="5" y="7" width="10" height="2" rx="1"/><rect x="5" y="11" width="6" height="2" rx="1"/></svg>
+              <i class="fas fa-users"></i>
             </span>
             <span class="sidebar-text">고객 정보 조회</span>
           </li>
           <li id="menu-manager-info">
             <span class="sidebar-icon" aria-hidden="true">
-              <svg width="20" height="20" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10 6h0m0 8v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              <i class="fas fa-user-cog"></i>
             </span>
             <span class="sidebar-text">담당자 정보 조회</span>
           </li>
@@ -67,14 +80,19 @@
             </span>
             <span class="sidebar-text">자격시험 일정</span>
           </li>
+          <li id="menu-applicants">
+            <span class="sidebar-icon" aria-hidden="true">
+              <i class="fas fa-user-plus"></i>
+            </span>
+            <span class="sidebar-text">위촉자 조회</span>
+          </li>
         </ul>
-        <button id="sidebar-logout-btn" onclick="logout()">로그아웃</button>
       </div>
       <div class="main-content" id="main-content">
         <!-- 관리자 콘텐츠 -->
-        <div id="admin-content" style="display:none; margin-top: 50px;">
+        <div id="admin-content" style="display:none;">
           <!-- 담당자 관리 영역 -->
-          <div id="manager-section" class="manager-section">
+          <div id="manager-section" class="content-section">
             <h4>담당자 관리</h4>
             <p style="color: #666; font-size: 14px; margin-bottom: 16px;">
               담당자를 추가하고 기본 정보를 관리합니다. 상세 정보(개인정보, 연락처 등)는 <strong>담당자 정보 조회</strong> 페이지에서 수정할 수 있습니다.
@@ -99,11 +117,11 @@
           </div>
 
           <!-- 담당자 정보 조회 영역 -->
-          <div id="manager-info-section" style="display:none;">
-            <h3 style="text-align: center;">담당자 정보 조회</h3>
+          <div id="manager-info-section" class="content-section" style="display:none;">
+            <h3>담당자 정보 조회</h3>
             
             <!-- 엑셀 업로드 섹션 -->
-            <div class="excel-upload-section" style="margin-bottom: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #3498db;">
+            <div class="excel-upload-section" style="margin-bottom: 30px; padding: 20px; background: #fff; border-radius: 8px; border-left: 4px solid #3498db;">
               <h5 style="margin: 0 0 15px 0; color: #2c3e50; display: flex; align-items: center; gap: 8px;">
                 <i class="fas fa-file-excel"></i>
                 보험사 계정 정보 일괄 업로드
@@ -155,8 +173,8 @@
           </div>
 
           <!-- 고객 정보 조회 영역 -->
-          <div id="client-section" style="display:none;">
-            <h3 style="text-align: center;">고객 정보 관리</h3>
+          <div id="client-section" class="content-section" style="display:none;">
+            <h3>고객 정보 관리</h3>
             
             <!-- 마이그레이션 버튼 추가 -->
             <div style="text-align: center; margin-bottom: 20px;">
@@ -186,7 +204,7 @@
 
           <!-- 자격시험 일정 영역 -->
           <div id="exam-schedule-section" style="display:none;">
-            <h3 style="text-align: center;">생명보험 자격시험 일정</h3>
+            <h3>생명보험 자격시험 일정</h3>
             
             <!-- 크롤링 버튼 -->
             <div style="text-align: center; margin-bottom: 30px;">
@@ -202,6 +220,11 @@
                 <p>일정 새로고침 버튼을 눌러서 최신 시험 일정을 확인하세요.</p>
               </div>
             </div>
+          </div>
+
+          <!-- 위촉자 조회 영역 -->
+          <div id="applicants-section" style="display:none;">
+            <div id="applicants-container"></div>
           </div>
         </div>
       </div>

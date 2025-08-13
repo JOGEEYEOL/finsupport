@@ -8,7 +8,6 @@
     <!-- Font Awesome 추가 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <script src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.min.js"></script>
-    <script type="module" src="../common/config/config.js"></script>
     <script type="module" src="script.js"></script>
     <!-- Open Graph & Twitter Card for SNS 썸네일 -->
     <meta property="og:title" content="오너스경영연구소 - 위촉자 정보 입력" />
@@ -49,19 +48,20 @@
         <div class="progress-header">
           <h3><i class="fas fa-user-plus"></i> 위촉자 정보 입력</h3>
           <div class="step-indicator">
-            <span id="current-step">1</span> / <span id="total-steps">6</span>
+            <span id="current-step">1</span> / <span id="total-steps">7</span>
           </div>
         </div>
         <div class="progress-bar">
           <div class="progress-fill" id="progress-fill"></div>
         </div>
-        <div class="step-labels">
+        <div class="step-labels"> 
           <span class="step-label active" data-step="1">기본정보</span>
           <span class="step-label" data-step="2">연락처</span>
           <span class="step-label" data-step="3">주소</span>
           <span class="step-label" data-step="4">계좌</span>
           <span class="step-label" data-step="5">학력/경력</span>
-          <span class="step-label" data-step="6">동의/제출</span>
+          <span class="step-label" data-step="6">확인</span>
+          <span class="step-label" data-step="7">동의/제출</span>
         </div>
       </div>
 
@@ -250,6 +250,11 @@
           </div>
 
           <div class="form-group">
+            <label for="schoolName">학교명</label>
+            <input type="text" id="schoolName" name="schoolName" placeholder="학교명을 입력하세요" />
+          </div>
+
+          <div class="form-group">
             <label for="major">전공 (선택)</label>
             <input type="text" id="major" name="major" placeholder="전공 분야" />
           </div>
@@ -290,9 +295,20 @@
           </div>
         </div>
 
-        <!-- 6단계: 개인정보 동의 및 제출 -->
+        <!-- 6단계: 입력 정보 확인 -->
         <div class="step-section" data-step="6">
-          <div class="consent-section">
+          <!-- 입력 정보 요약 -->
+          <div class="form-section">
+            <h4><i class="fas fa-check-circle"></i> 입력 정보 확인</h4>
+            <div id="summary-content" class="summary-content">
+              <!-- 입력 정보 요약이 여기에 표시됩니다 -->
+            </div>
+          </div>
+        </div>
+
+        <!-- 7단계: 개인정보 동의 및 제출 -->
+        <div class="step-section" data-step="7">
+          <!-- 개인정보 수집 및 이용 동의 -->
           <div class="consent-row">
             <div class="consent-left">
               <span
@@ -332,48 +348,115 @@
           <div class="error-message" id="agree1-error">
             개인정보 수집 및 이용에 동의해주세요.
           </div>
-        </div>
 
-        <!-- 모달 1: 수집 이용 동의 -->
-        <div id="modal1" class="modal">
-          <div class="modal-content">
-            <span class="close" onclick="closeModal('modal1')">&times;</span>
-            <h3>개인정보 수집 및 이용 동의</h3>
-            <p>
-              1. 수집하는 개인정보 항목 <br />
-              • 성명, 주민등록번호, 연락처(휴대폰), 주소 <br />
-              • 이메일 주소 <br />
-              • 계좌정보(은행, 계좌번호, 예금주) <br />
-              • 학력 및 경력 정보 <br />
-              <br />
-              2. 수집·이용 목적 <br />
-              • 위촉자 자격시험 신청 및 관리 <br />
-              • 자격 취득 후 위촉 계약 체결 <br />
-              • 본인 확인 및 위촉자 관리 <br />
-              • 수수료 지급을 위한 계좌 정보 관리 <br />
-              <br />
-              3. 보유 및 이용 기간 <br />
-              • 수집일로부터 3년간 <br />
-              • 단, 관계 법령에 의해 보존이 필요한 경우 해당 기간 동안 보관
-              <br />
-              <br />
-              4. 동의 거부 권리 및 불이익 안내 <br />
-              • 귀하는 개인정보 수집·이용에 대한 동의를 거부하실 수 있습니다.
-              <br />
-              • 다만, 동의하지 않으실 경우 위촉자 자격시험 신청이 제한될 수
-              있습니다.
-            </p>
-          </div>
-        </div>
-
-            <!-- 제출 버튼 -->
-            <div class="form-group">
-              <button type="submit" class="submit-btn">
-                <i class="fas fa-paper-plane"></i> 제출하기
-              </button>
+          <!-- 개인정보 제3자 제공 동의 -->
+          <div class="consent-row">
+            <div class="consent-left">
+              <span
+                class="check-icon"
+                id="agree2-icon"
+                tabindex="0"
+                onclick="toggleConsent('agree2')"
+              >
+                <svg width="20" height="20" viewBox="0 0 20 20">
+                  <polyline
+                    points="4,11 9,16 16,5"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  />
+                </svg>
+              </span>
+              <input
+                type="checkbox"
+                id="agree2"
+                name="agree2"
+                style="display: none"
+              />
+              <span class="required-text">[필수]</span>
+              <span class="consent-title">개인정보 제3자 제공 동의</span>
             </div>
+            <div class="consent-right">
+              <button
+                type="button"
+                class="consent-view"
+                onclick="openModal('modal2')"
+              >
+                전체 &gt;
+            </button>
           </div>
         </div>
+        <div class="error-message" id="agree2-error">
+          개인정보 제3자 제공에 동의해주세요.
+        </div>
+
+        </div>
+
+      <!-- 모달 1: 수집 이용 동의 -->
+      <div id="modal1" class="modal">
+        <div class="modal-content">
+          <span class="close" onclick="closeModal('modal1')">&times;</span>
+          <h3>개인정보 수집 및 이용 동의</h3>
+          <p>
+            1. 수집하는 개인정보 항목 <br />
+            • 성명, 주민등록번호, 연락처(휴대폰), 주소 <br />
+            • 이메일 주소 <br />
+            • 계좌정보(은행, 계좌번호, 예금주) <br />
+            • 학력 및 경력 정보 <br />
+            <br />
+            2. 수집·이용 목적 <br />
+            • 위촉자 자격시험 신청 및 관리 <br />
+            • 자격 취득 후 위촉 계약 체결 <br />
+            • 본인 확인 및 위촉자 관리 <br />
+            • 수수료 지급을 위한 계좌 정보 관리 <br />
+            <br />
+            3. 보유 및 이용 기간 <br />
+            • 수집일로부터 3년간 <br />
+            • 단, 관계 법령에 의해 보존이 필요한 경우 해당 기간 동안 보관
+            <br />
+            <br />
+            4. 동의 거부 권리 및 불이익 안내 <br />
+            • 귀하는 개인정보 수집·이용에 대한 동의를 거부하실 수 있습니다.
+            <br />
+            • 다만, 동의하지 않으실 경우 위촉자 자격시험 신청이 제한될 수
+            있습니다.
+          </p>
+        </div>
+      </div>
+
+      <!-- 모달 2: 제3자 제공 동의 -->
+      <div id="modal2" class="modal">
+        <div class="modal-content">
+          <span class="close" onclick="closeModal('modal2')">&times;</span>
+          <h3>개인정보 제3자 제공 동의</h3>
+          <p>
+            1. 제공받는 자 <br />
+            • 생명보험협회, 손해보험협회 등 보험 관련 협회 <br />
+            • 자격시험 시행기관 및 감독기관 <br />
+            • 위촉 계약 체결 시 관련 보험회사 <br />
+            <br />
+            2. 제공 항목 <br />
+            • 성명, 주민등록번호, 연락처, 주소 <br />
+            • 이메일 주소, 계좌정보 <br />
+            • 학력 및 경력 정보 등 위촉자 신청 정보 일체 <br />
+            <br />
+            3. 제공 목적 <br />
+            • 위촉자 자격시험 신청 및 관리 <br />
+            • 자격 취득 후 위촉 계약 체결 <br />
+            • 수수료 지급 및 세무 처리 <br />
+            • 관련 법령에 따른 의무 이행 <br />
+            <br />
+            4. 보유 및 이용 기간 <br />
+            • 제공일로부터 위촉 계약 종료 후 3년간 <br />
+            • 단, 관계 법령에 의해 보존이 필요한 경우 해당 기간 동안 보관 <br />
+            <br />
+            5. 동의 거부 권리 및 불이익 안내 <br />
+            • 귀하는 개인정보 제3자 제공에 대한 동의를 거부하실 수 있습니다.
+            <br />
+            • 다만, 동의하지 않으실 경우 위촉자 자격시험 신청 및 위촉 계약 체결이 제한될 수 있습니다.
+          </p>
+        </div>
+      </div>
 
         <!-- 네비게이션 버튼들 -->
         <div class="step-navigation">
@@ -382,6 +465,9 @@
           </button>
           <button type="button" id="next-btn" class="nav-btn next-btn" disabled>
             다음 <i class="fas fa-chevron-right"></i>
+          </button>
+          <button type="submit" id="submit-btn" class="nav-btn submit-btn" disabled style="display: none;">
+            <i class="fas fa-paper-plane"></i> 제출하기
           </button>
         </div>
       </form>

@@ -1,6 +1,6 @@
-import { db, collection, addDoc } from "../common/config/database.js";
-import { getDocs, collection as fsCollection, query, where } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-firestore.js";
-import { Timestamp } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-firestore.js";
+import { db, functions } from "/common/js/core/firebase-config.js";
+import { collection, addDoc, getDocs, query, where, Timestamp } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-firestore.js";
+import { httpsCallable } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-functions.js";
 
 // URL 파라미터 파싱
 function getUrlParams() {
@@ -9,6 +9,108 @@ function getUrlParams() {
     examId: urlParams.get('exam'),
     managerCode: urlParams.get('manager')
   };
+}
+
+// 합성 시험 ID에서 시험 정보 추출
+function parseExamIdToData(examId) {
+  try {
+    // examId 형식: YYYYMMDD_REGION_YYYYMMDD (예: 20241215_SEL_20241201)
+    const parts = examId.split('_');
+    if (parts.length !== 3) {
+      return null;
+    }
+    
+    const [examDateStr, regionCode, applicationDateStr] = parts;
+    
+    // 날짜 형식 변환
+    const examDate = formatDateFromString(examDateStr);
+    const applicationDate = formatDateFromString(applicationDateStr);
+    
+    // 지역 코드 변환
+    const region = getRegionFromCode(regionCode);
+    
+    if (!examDate || !region) {
+      return null;
+    }
+    
+    // 사내 마감일 계산 (협회 접수 시작일 전날 오전 11시)
+    const internalDeadline = calculateInternalDeadline(applicationDate);
+    
+    // 모의 시험 데이터 생성
+    return {
+      id: examId,
+      examDate: examDate,
+      region: region,
+      applicationPeriod: internalDeadline, // 사내 마감일로 변경
+      resultDate: '미정',
+      type: 'life_insurance'
+    };
+  } catch (error) {
+    console.error('시험 ID 파싱 실패:', examId, error);
+    return null;
+  }
+}
+
+// 날짜 문자열을 포맷팅 (YYYYMMDD -> YYYY-MM-DD)
+function formatDateFromString(dateStr) {
+  if (!dateStr || dateStr.length !== 8) {
+    return null;
+  }
+  
+  const year = dateStr.substring(0, 4);
+  const month = dateStr.substring(4, 6);
+  const day = dateStr.substring(6, 8);
+  
+  return `${year}-${month}-${day}`;
+}
+
+// 지역 코드에서 지역명 변환
+function getRegionFromCode(regionCode) {
+  const regionMap = {
+    'SEL': '서울',
+    'PUS': '부산', 
+    'ICN': '인천',
+    'DAE': '대구',
+    'GWJ': '광주',
+    'DJN': '대전',
+    'ULS': '울산',
+    'JEJ': '제주',
+    'KRL': '강릉',
+    'WON': '원주',
+    'CCN': '춘천',
+    'JEO': '전주',
+    'SRS': '서산',
+    'ALL': '전국',
+    'ETC': '기타'
+  };
+  
+  return regionMap[regionCode] || null;
+}
+
+// 사내 마감일 계산 (협회 접수 시작일 전날 오전 11시)
+function calculateInternalDeadline(applicationStartDate) {
+  try {
+    const startDate = new Date(applicationStartDate);
+    if (isNaN(startDate.getTime())) {
+      return `${applicationStartDate} 전날 11:00까지`;
+    }
+    
+    // 하루 전으로 설정
+    const internalDate = new Date(startDate);
+    internalDate.setDate(internalDate.getDate() - 1);
+    
+    // 요일 한국어로 변환
+    const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+    const dayName = dayNames[internalDate.getDay()];
+    
+    const year = internalDate.getFullYear();
+    const month = String(internalDate.getMonth() + 1).padStart(2, '0');
+    const day = String(internalDate.getDate()).padStart(2, '0');
+    
+    return `${year}-${month}-${day}(${dayName}) 11:00까지`;
+  } catch (error) {
+    return `${applicationStartDate} 전날 11:00까지`;
+  }
 }
 
 // 시험 정보 로드 및 표시
@@ -21,41 +123,53 @@ async function loadExamInfo() {
     return true;
   }
   
-  // 파라미터가 일부만 있는 경우
-  if (!examId || !managerCode) {
-    showError('링크가 올바르지 않습니다. 담당자에게 다시 확인해주세요.');
+  // examId가 없는 경우 에러
+  if (!examId) {
+    showError('시험 정보가 없습니다. 링크를 다시 확인해주세요.');
     return false;
   }
   
+  // managerCode가 없는 경우는 어드민에서 생성된 링크이므로 허용
+  
   try {
+    let examData;
+    
     // 시험 정보 조회
-    const examQuery = query(fsCollection(db, 'examSchedules'), where('id', '==', examId));
+    const examQuery = query(collection(db, 'exam_schedules'), where('id', '==', examId));
     const examSnapshot = await getDocs(examQuery);
     
     if (examSnapshot.empty) {
-      showError('시험 정보를 찾을 수 없습니다.');
-      return false;
+      // 데이터베이스에서 찾을 수 없는 경우, 합성 ID에서 정보 추출
+      examData = parseExamIdToData(examId);
+      if (!examData) {
+        showError('시험 정보를 찾을 수 없습니다.');
+        return false;
+      }
+    } else {
+      examData = examSnapshot.docs[0].data();
     }
     
-    const examData = examSnapshot.docs[0].data();
+    let managerData = null;
     
-    // 담당자 정보 조회
-    const managerQuery = query(fsCollection(db, 'managers'), where('code', '==', managerCode));
-    const managerSnapshot = await getDocs(managerQuery);
-    
-    if (managerSnapshot.empty) {
-      showError('담당자 정보를 찾을 수 없습니다.');
-      return false;
+    // 담당자 정보 조회 (managerCode가 있는 경우만)
+    if (managerCode) {
+      const managerQuery = query(collection(db, 'managers'), where('code', '==', managerCode));
+      const managerSnapshot = await getDocs(managerQuery);
+      
+      if (managerSnapshot.empty) {
+        showError('담당자 정보를 찾을 수 없습니다.');
+        return false;
+      }
+      
+      managerData = managerSnapshot.docs[0].data();
     }
-    
-    const managerData = managerSnapshot.docs[0].data();
     
     // 시험 정보 표시
     displayExamInfo(examData, managerData);
     
     // 히든 필드에 값 설정
     document.getElementById('examId').value = examId;
-    document.getElementById('managerCode').value = managerCode;
+    document.getElementById('managerCode').value = managerCode || '';
     
     return true;
   } catch (error) {
@@ -70,20 +184,35 @@ function displayDefaultInfo() {
   const examDetails = document.getElementById('exam-details');
   if (!examDetails) return;
   
-  examDetails.innerHTML = `
-    <div class="exam-item">
-      <i class="fas fa-info-circle"></i>
-      <span><strong>일반 지원:</strong> 생명보험자격시험 위촉자 지원</span>
-    </div>
-    <div class="exam-item">
-      <i class="fas fa-globe"></i>
-      <span><strong>온라인 지원:</strong> 온라인으로 직접 지원하신 경우입니다</span>
-    </div>
-    <div class="exam-item">
-      <i class="fas fa-phone"></i>
-      <span><strong>문의:</strong> 담당자 배정 후 연락드리겠습니다</span>
-    </div>
-  `;
+  examDetails.innerHTML = '';
+  
+  // 상태바 초기화 (1단계로 리셋)
+  resetProgressBar();
+}
+
+// 상태바를 1단계로 초기화
+function resetProgressBar() {
+  // 현재 단계를 1로 설정
+  const currentStepSpan = document.getElementById('current-step');
+  if (currentStepSpan) {
+    currentStepSpan.textContent = '1';
+  }
+  
+  // 진행률 바 초기화 (1/7 = 약 14.3%)
+  const progressFill = document.getElementById('progress-fill');
+  if (progressFill) {
+    progressFill.style.width = '14.3%';
+  }
+  
+  // 모든 스텝 라벨을 비활성화하고 첫 번째만 활성화
+  document.querySelectorAll('.step-label').forEach(label => {
+    label.classList.remove('active');
+  });
+  
+  const firstStepLabel = document.querySelector('.step-label[data-step="1"]');
+  if (firstStepLabel) {
+    firstStepLabel.classList.add('active');
+  }
 }
 
 // 시험 정보 표시 (담당자 연결된 경우)
@@ -94,7 +223,7 @@ function displayExamInfo(examData, managerData) {
   examDetails.innerHTML = `
     <div class="exam-item">
       <i class="fas fa-book"></i>
-      <span><strong>시험명:</strong> ${examData.examName || '생명보험자격시험'}</span>
+      <span><strong>시험명:</strong> ${examData.examName || '생명보험자격시험'}${examData.region ? `(${examData.region})` : ''}</span>
     </div>
     <div class="exam-item">
       <i class="fas fa-calendar"></i>
@@ -104,10 +233,15 @@ function displayExamInfo(examData, managerData) {
       <i class="fas fa-clock"></i>
       <span><strong>접수기간:</strong> ${examData.applicationPeriod || ''}</span>
     </div>
+    ${managerData ? `
     <div class="exam-item">
       <i class="fas fa-user-tie"></i>
-      <span><strong>담당자:</strong> ${managerData.name || ''} (${managerData.team || ''}팀)</span>
-    </div>
+      <span><strong>담당자:</strong> ${managerData.name || ''} (${managerData.team || ''})</span>
+    </div>` : `
+    <div class="exam-item">
+      <i class="fas fa-globe"></i>
+      <span><strong>신청방식:</strong> 관리자 링크를 통한 직접 신청</span>
+    </div>`}
   `;
 }
 
@@ -215,7 +349,27 @@ function setupConsentCheckbox() {
     } else {
       icon.classList.remove('checked');
     }
+    
+    // 동의 상태에 따라 제출 버튼 활성화/비활성화
+    updateSubmitButton();
   };
+}
+
+// 제출 버튼 활성화/비활성화 함수
+function updateSubmitButton() {
+  const agree1 = document.getElementById('agree1').checked;
+  const agree2 = document.getElementById('agree2').checked;
+  const submitBtn = document.getElementById('submit-btn');
+  
+  if (submitBtn) {
+    if (agree1 && agree2) {
+      submitBtn.disabled = false;
+      submitBtn.classList.add('active');
+    } else {
+      submitBtn.disabled = true;
+      submitBtn.classList.remove('active');
+    }
+  }
 }
 
 // 모달 관리
@@ -351,21 +505,32 @@ function validateForm() {
     }
   }
   
+  // 제3자 정보 제공 동의 검증
+  const agree2 = document.getElementById('agree2');
+  const agree2Error = document.getElementById('agree2-error');
+  
+  if (!agree2.checked) {
+    errors.push('개인정보 제3자 제공에 동의해주세요.');
+    if (agree2Error) {
+      agree2Error.classList.add('show');
+    }
+  } else {
+    if (agree2Error) {
+      agree2Error.classList.remove('show');
+    }
+  }
+  
   return errors.length === 0;
 }
 
-// 폼 제출
+// 폼 제출 (중복 체크는 2단계에서 이미 완료됨)
 async function submitForm(formData) {
   try {
-    // Firestore에 위촉자 정보 저장
-    const docRef = await addDoc(collection(db, 'applicants'), {
-      ...formData,
-      status: 'pending',
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now()
-    });
+    // 바로 저장 진행 (중복 체크는 2단계에서 이미 수행)
+    const saveApplicantInfoFunction = httpsCallable(functions, 'saveApplicantInfo');
+    await saveApplicantInfoFunction(formData);
     
-    console.log('위촉자 정보 저장 완료:', docRef.id);
+    console.log('위촉자 정보 저장 완료!');
     
     // 성공 메시지 표시
     showSuccessMessage();
@@ -373,6 +538,13 @@ async function submitForm(formData) {
   } catch (error) {
     console.error('위촉자 정보 저장 실패:', error);
     alert('정보 저장 중 오류가 발생했습니다. 다시 시도해주세요.');
+    
+    // 제출 버튼 복원
+    const submitBtn = document.getElementById('submit-btn');
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> 제출하기';
+    }
   }
 }
 
@@ -396,11 +568,19 @@ function showSuccessMessage() {
 
 // 단계별 폼 관리
 let currentStep = 1;
-const totalSteps = 6;
+const totalSteps = 7;
 
 // 단계 이동 함수
-function goToStep(step) {
+async function goToStep(step) {
   if (step < 1 || step > totalSteps) return;
+  
+  // 2단계에서 3단계로 이동할 때 중복 체크 실행
+  if (currentStep === 2 && step === 3) {
+    const duplicateCheckResult = await performDuplicateCheck();
+    if (!duplicateCheckResult) {
+      return; // 중복된 경우 다음 단계로 이동하지 않음
+    }
+  }
   
   // 현재 단계 숨기기
   const currentSection = document.querySelector(`.step-section[data-step="${currentStep}"]`);
@@ -416,6 +596,11 @@ function goToStep(step) {
   
   // 현재 단계 업데이트
   currentStep = step;
+  
+  // 6단계로 이동할 때 요약 정보 생성
+  if (step === 6) {
+    generateSummary();
+  }
   
   // UI 업데이트
   updateProgressBar();
@@ -444,6 +629,13 @@ function updateProgressBar() {
 // 단계 라벨 업데이트
 function updateStepLabels() {
   const stepLabels = document.querySelectorAll('.step-label');
+  const totalStepsElement = document.getElementById('total-steps');
+  
+  // total-steps 요소 업데이트
+  if (totalStepsElement) {
+    totalStepsElement.textContent = totalSteps;
+  }
+  
   stepLabels.forEach((label, index) => {
     const stepNumber = index + 1;
     label.classList.remove('active', 'completed');
@@ -460,6 +652,7 @@ function updateStepLabels() {
 function updateNavigationButtons() {
   const prevBtn = document.getElementById('prev-btn');
   const nextBtn = document.getElementById('next-btn');
+  const submitBtn = document.getElementById('submit-btn');
   
   // 이전 버튼
   if (prevBtn) {
@@ -478,6 +671,17 @@ function updateNavigationButtons() {
       nextBtn.style.display = 'flex';
       // 현재 단계의 검증 상태에 따라 활성화/비활성화
       nextBtn.disabled = !validateCurrentStep();
+    }
+  }
+  
+  // 제출 버튼 (7단계에서만 표시)
+  if (submitBtn) {
+    if (currentStep === totalSteps) {
+      submitBtn.style.display = 'flex';
+      // 동의 상태에 따라 활성화/비활성화
+      updateSubmitButton();
+    } else {
+      submitBtn.style.display = 'none';
     }
   }
 }
@@ -514,13 +718,183 @@ function validateCurrentStep() {
       const experience = document.querySelector('input[name="experience"]:checked');
       return education && experience;
       
-    case 6: // 동의 및 제출
+    case 6: // 입력 정보 확인 (요약)
+      return true; // 요약 단계는 검증 불필요
+      
+    case 7: // 동의 및 제출
       const agree1 = document.getElementById('agree1').checked;
-      return agree1;
+      const agree2 = document.getElementById('agree2').checked;
+      return agree1 && agree2;
       
     default:
       return false;
   }
+}
+
+// 중복 체크 수행 (2단계에서 실행)
+async function performDuplicateCheck() {
+  try {
+    // 로딩 상태 표시
+    const nextBtn = document.getElementById('next-btn');
+    const originalText = nextBtn.innerHTML;
+    nextBtn.disabled = true;
+    nextBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 확인중...';
+    
+    // 현재 입력된 정보 수집
+    const name = document.getElementById('name').value.trim();
+    const phone = document.getElementById('phone').value.trim();
+    const email = document.getElementById('email').value.trim();
+    
+    // Firebase Functions 호출
+    const checkDuplicateFunction = httpsCallable(functions, 'checkApplicantDuplicate');
+    const duplicateResult = await checkDuplicateFunction({
+      name: name,
+      phone: phone,
+      email: email
+    });
+    
+    // 버튼 원상 복구
+    nextBtn.disabled = false;
+    nextBtn.innerHTML = originalText;
+    
+    // 중복된 정보가 있는 경우
+    if (duplicateResult.data.isDuplicate) {
+      alert(duplicateResult.data.message);
+      return false; // 다음 단계로 이동하지 않음
+    }
+    
+    // 중복되지 않은 경우
+    return true; // 다음 단계로 이동 허용
+    
+  } catch (error) {
+    console.error('중복 체크 실패:', error);
+    
+    // 버튼 원상 복구
+    const nextBtn = document.getElementById('next-btn');
+    nextBtn.disabled = false;
+    nextBtn.innerHTML = '다음 <i class="fas fa-chevron-right"></i>';
+    
+    // 에러가 발생한 경우에도 다음 단계로 진행 허용 (서비스 중단 방지)
+    const continueAnyway = confirm('중복 확인 중 오류가 발생했습니다. 그래도 계속 진행하시겠습니까?');
+    return continueAnyway;
+  }
+}
+
+// 입력 정보 요약 생성
+function generateSummary() {
+  const summaryContent = document.getElementById('summary-content');
+  if (!summaryContent) return;
+  
+  const name = document.getElementById('name').value.trim();
+  const ssnFront = document.getElementById('ssnFront').value;
+  const ssnBack = document.getElementById('ssnBack').value;
+  const email = document.getElementById('email').value.trim();
+  const phoneCarrier = document.getElementById('phoneCarrier').value;
+  const phone = document.getElementById('phone').value.trim();
+  const postcode = document.getElementById('postcode').value;
+  const address = document.getElementById('address').value.trim();
+  const addressDetail = document.getElementById('addressDetail').value.trim();
+  const bank = document.getElementById('bank').value;
+  const accountNumber = document.getElementById('accountNumber').value.trim();
+  const accountHolder = document.getElementById('accountHolder').value.trim();
+  const education = document.getElementById('education').value;
+  const schoolName = document.getElementById('schoolName').value.trim();
+  const major = document.getElementById('major').value.trim();
+  const experience = document.querySelector('input[name="experience"]:checked')?.value;
+  const experienceYears = document.getElementById('experienceYears').value;
+  const prevCompany = document.getElementById('prevCompany').value.trim();
+  
+  let summaryHTML = `
+    <div class="summary-section">
+      <div class="summary-title">기본 정보</div>
+      <div class="summary-item">
+        <span class="summary-label">성함</span>
+        <span class="summary-value">${name}</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-label">주민등록번호</span>
+        <span class="summary-value">${ssnFront}-${ssnBack.substring(0,1)}******</span>
+      </div>
+    </div>
+    
+    <div class="summary-section">
+      <div class="summary-title">연락처 정보</div>
+      <div class="summary-item">
+        <span class="summary-label">핸드폰</span>
+        <span class="summary-value">${phoneCarrier} ${phone}</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-label">이메일</span>
+        <span class="summary-value">${email}</span>
+      </div>
+    </div>
+    
+    <div class="summary-section">
+      <div class="summary-title">주소 정보</div>
+      <div class="summary-item">
+        <span class="summary-label">우편번호</span>
+        <span class="summary-value">${postcode}</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-label">주소</span>
+        <span class="summary-value">${address} ${addressDetail}</span>
+      </div>
+    </div>
+    
+    <div class="summary-section">
+      <div class="summary-title">계좌 정보</div>
+      <div class="summary-item">
+        <span class="summary-label">은행</span>
+        <span class="summary-value">${bank}</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-label">계좌번호</span>
+        <span class="summary-value">${accountNumber}</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-label">예금주</span>
+        <span class="summary-value">${accountHolder}</span>
+      </div>
+    </div>
+    
+    <div class="summary-section">
+      <div class="summary-title">학력 및 경력</div>
+      <div class="summary-item">
+        <span class="summary-label">최종 학력</span>
+        <span class="summary-value">${education}</span>
+      </div>
+      ${schoolName ? `
+      <div class="summary-item">
+        <span class="summary-label">학교명</span>
+        <span class="summary-value">${schoolName}</span>
+      </div>
+      ` : ''}
+      ${major ? `
+      <div class="summary-item">
+        <span class="summary-label">전공</span>
+        <span class="summary-value">${major}</span>
+      </div>
+      ` : ''}
+      <div class="summary-item">
+        <span class="summary-label">경력 구분</span>
+        <span class="summary-value">${experience}</span>
+      </div>
+      ${experience === '경력' && experienceYears ? `
+      <div class="summary-item">
+        <span class="summary-label">경력 연수</span>
+        <span class="summary-value">${experienceYears}</span>
+      </div>
+      ` : ''}
+      ${experience === '경력' && prevCompany ? `
+      <div class="summary-item">
+        <span class="summary-label">이전 회사</span>
+        <span class="summary-value">${prevCompany}</span>
+      </div>
+      ` : ''}
+    </div>
+  `;
+  
+  summaryContent.innerHTML = summaryHTML;
 }
 
 // 단계별 입력 필드 검증 이벤트 리스너 설정
@@ -532,6 +906,15 @@ function setupStepValidation() {
       field.addEventListener('input', () => {
         if (currentStep === 1) {
           updateNavigationButtons();
+        }
+      });
+      // 엔터키 이벤트 추가
+      field.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && currentStep === 1) {
+          e.preventDefault();
+          if (validateCurrentStep()) {
+            goToStep(currentStep + 1);
+          }
         }
       });
     }
@@ -551,6 +934,15 @@ function setupStepValidation() {
           updateNavigationButtons();
         }
       });
+      // 엔터키 이벤트 추가
+      field.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && currentStep === 2) {
+          e.preventDefault();
+          if (validateCurrentStep()) {
+            goToStep(currentStep + 1);
+          }
+        }
+      });
     }
   });
   
@@ -561,6 +953,15 @@ function setupStepValidation() {
       field.addEventListener('input', () => {
         if (currentStep === 3) {
           updateNavigationButtons();
+        }
+      });
+      // 엔터키 이벤트 추가
+      field.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && currentStep === 3) {
+          e.preventDefault();
+          if (validateCurrentStep()) {
+            goToStep(currentStep + 1);
+          }
         }
       });
     }
@@ -580,6 +981,15 @@ function setupStepValidation() {
           updateNavigationButtons();
         }
       });
+      // 엔터키 이벤트 추가
+      field.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && currentStep === 4) {
+          e.preventDefault();
+          if (validateCurrentStep()) {
+            goToStep(currentStep + 1);
+          }
+        }
+      });
     }
   });
   
@@ -591,6 +1001,88 @@ function setupStepValidation() {
         updateNavigationButtons();
       }
     });
+    // 엔터키 이벤트 추가
+    education.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && currentStep === 5) {
+        e.preventDefault();
+        if (validateCurrentStep()) {
+          goToStep(currentStep + 1);
+        }
+      }
+    });
+  }
+  
+  // 5단계 추가 필드들 (schoolName, major, experienceYears, prevCompany)
+  const schoolName = document.getElementById('schoolName');
+  if (schoolName) {
+    schoolName.addEventListener('input', () => {
+      if (currentStep === 5) {
+        updateNavigationButtons();
+      }
+    });
+    // 엔터키 이벤트 추가
+    schoolName.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && currentStep === 5) {
+        e.preventDefault();
+        if (validateCurrentStep()) {
+          goToStep(currentStep + 1);
+        }
+      }
+    });
+  }
+  
+  const major = document.getElementById('major');
+  if (major) {
+    major.addEventListener('input', () => {
+      if (currentStep === 5) {
+        updateNavigationButtons();
+      }
+    });
+    // 엔터키 이벤트 추가
+    major.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && currentStep === 5) {
+        e.preventDefault();
+        if (validateCurrentStep()) {
+          goToStep(currentStep + 1);
+        }
+      }
+    });
+  }
+  
+  const experienceYears = document.getElementById('experienceYears');
+  if (experienceYears) {
+    experienceYears.addEventListener('change', () => {
+      if (currentStep === 5) {
+        updateNavigationButtons();
+      }
+    });
+    // 엔터키 이벤트 추가
+    experienceYears.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && currentStep === 5) {
+        e.preventDefault();
+        if (validateCurrentStep()) {
+          goToStep(currentStep + 1);
+        }
+      }
+    });
+  }
+  
+  const prevCompany = document.getElementById('prevCompany');
+  if (prevCompany) {
+    prevCompany.addEventListener('input', () => {
+      if (currentStep === 5) {
+        updateNavigationButtons();
+      }
+    });
+    // 엔터키 이벤트 추가
+    prevCompany.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && currentStep === 5) {
+        e.preventDefault();
+        if (validateCurrentStep()) {
+          goToStep(currentStep + 1);
+        }
+      }
+    });
   }
   
   const experienceRadios = document.querySelectorAll('input[name="experience"]');
@@ -598,6 +1090,15 @@ function setupStepValidation() {
     radio.addEventListener('change', () => {
       if (currentStep === 5) {
         updateNavigationButtons();
+      }
+    });
+    // 엔터키 이벤트 추가
+    radio.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && currentStep === 5) {
+        e.preventDefault();
+        if (validateCurrentStep()) {
+          goToStep(currentStep + 1);
+        }
       }
     });
   });
@@ -608,6 +1109,86 @@ function setupStepValidation() {
     agree1.addEventListener('change', () => {
       if (currentStep === 6) {
         updateNavigationButtons();
+      }
+      // 동의 상태 변경 시 제출 버튼 상태 업데이트
+      updateSubmitButton();
+    });
+    // 엔터키 이벤트 추가 (6단계에서 7단계로 이동)
+    agree1.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && currentStep === 6) {
+        e.preventDefault();
+        if (validateCurrentStep()) {
+          goToStep(currentStep + 1);
+        }
+      }
+    });
+  }
+  
+  // 6단계 전체에서 엔터키 이벤트 추가 (요약 단계)
+  const step6Section = document.querySelector('.step-section[data-step="6"]');
+  if (step6Section) {
+    step6Section.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && currentStep === 6) {
+        e.preventDefault();
+        if (validateCurrentStep()) {
+          goToStep(currentStep + 1);
+        }
+      }
+    });
+  }
+  
+  // 7단계 필드들 (동의 체크박스)
+  const agree2 = document.getElementById('agree2');
+  if (agree2) {
+    agree2.addEventListener('change', () => {
+      if (currentStep === 7) {
+        updateNavigationButtons();
+      }
+      // 동의 상태 변경 시 제출 버튼 상태 업데이트
+      updateSubmitButton();
+    });
+    // 엔터키 이벤트 추가 (7단계에서 제출)
+    agree2.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && currentStep === 7) {
+        e.preventDefault();
+        if (validateCurrentStep()) {
+          // 7단계는 마지막 단계이므로 제출 버튼 클릭
+          const submitBtn = document.getElementById('submit-btn');
+          if (submitBtn && !submitBtn.disabled) {
+            submitBtn.click();
+          }
+        }
+      }
+    });
+  }
+  
+  // 7단계 전체에서 엔터키 이벤트 추가 (동의 및 제출 단계)
+  const step7Section = document.querySelector('.step-section[data-step="7"]');
+  if (step7Section) {
+    step7Section.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && currentStep === 7) {
+        e.preventDefault();
+        if (validateCurrentStep()) {
+          // 7단계는 마지막 단계이므로 제출 버튼 클릭
+          const submitBtn = document.getElementById('submit-btn');
+          if (submitBtn && !submitBtn.disabled) {
+            submitBtn.click();
+          }
+        }
+      }
+    });
+  }
+  
+  // 제출하기 버튼에 엔터키 이벤트 추가
+  const submitBtnForEnter = document.getElementById('submit-btn');
+  if (submitBtnForEnter) {
+    submitBtnForEnter.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && currentStep === 7) {
+        e.preventDefault();
+        if (validateCurrentStep()) {
+          // 제출 버튼 클릭 이벤트 트리거
+          submitBtnForEnter.click();
+        }
       }
     });
   }
@@ -635,9 +1216,13 @@ document.addEventListener('DOMContentLoaded', async function() {
   updateStepLabels();
   updateNavigationButtons();
   
+  // 제출 버튼 초기 상태 설정
+  updateSubmitButton();
+  
   // 네비게이션 버튼 이벤트 리스너
   const prevBtn = document.getElementById('prev-btn');
   const nextBtn = document.getElementById('next-btn');
+  const submitBtn = document.getElementById('submit-btn');
   
   if (prevBtn) {
     prevBtn.addEventListener('click', () => {
@@ -646,17 +1231,15 @@ document.addEventListener('DOMContentLoaded', async function() {
   }
   
   if (nextBtn) {
-    nextBtn.addEventListener('click', () => {
+    nextBtn.addEventListener('click', async () => {
       if (validateCurrentStep()) {
-        goToStep(currentStep + 1);
+        await goToStep(currentStep + 1);
       }
     });
   }
   
-  // 폼 제출 이벤트
-  const form = document.getElementById('applicantInfoForm');
-  if (form) {
-    form.addEventListener('submit', async function(e) {
+  if (submitBtn) {
+    submitBtn.addEventListener('click', async (e) => {
       e.preventDefault();
       
       if (!validateForm()) {
@@ -669,7 +1252,6 @@ document.addEventListener('DOMContentLoaded', async function() {
       }
       
       // 제출 버튼 비활성화
-      const submitBtn = document.querySelector('.submit-btn');
       const originalText = submitBtn.innerHTML;
       submitBtn.disabled = true;
       submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 제출 중...';
@@ -677,9 +1259,9 @@ document.addEventListener('DOMContentLoaded', async function() {
       try {
         // 폼 데이터 수집
         const formData = {
-          examId: document.getElementById('examId').value || null, // 빈 값은 null로 처리
-          managerCode: document.getElementById('managerCode').value || null, // 빈 값은 null로 처리
-          applicationType: document.getElementById('examId').value ? 'manager_referral' : 'direct_application', // 지원 유형 구분
+          examId: document.getElementById('examId').value || null,
+          managerCode: document.getElementById('managerCode').value || null,
+          applicationType: document.getElementById('managerCode').value ? 'manager_referral' : (document.getElementById('examId').value ? 'admin_referral' : 'direct_application'),
           name: document.getElementById('name').value.trim(),
           ssn: document.getElementById('ssnFront').value + '-' + document.getElementById('ssnBack').value,
           email: document.getElementById('email').value.trim(),
@@ -692,10 +1274,13 @@ document.addEventListener('DOMContentLoaded', async function() {
           accountNumber: document.getElementById('accountNumber').value.trim(),
           accountHolder: document.getElementById('accountHolder').value.trim(),
           education: document.getElementById('education').value,
+          schoolName: document.getElementById('schoolName').value.trim(),
           major: document.getElementById('major').value.trim(),
           experience: document.querySelector('input[name="experience"]:checked').value,
           experienceYears: document.getElementById('experienceYears').value,
-          prevCompany: document.getElementById('prevCompany').value.trim()
+          prevCompany: document.getElementById('prevCompany').value.trim(),
+          agree1: document.getElementById('agree1').checked,
+          agree2: document.getElementById('agree2').checked
         };
         
         await submitForm(formData);
@@ -710,4 +1295,5 @@ document.addEventListener('DOMContentLoaded', async function() {
       }
     });
   }
+  
 });
