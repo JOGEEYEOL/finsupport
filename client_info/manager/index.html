@@ -70,7 +70,7 @@
           </div>
         </div>
         <ul class="sidebar-menu">
-          <li id="menu-profile" class="active">
+          <li id="menu-profile">
             <span class="sidebar-icon" aria-hidden="true">
               <i class="fas fa-user"></i>
             </span>
@@ -353,6 +353,73 @@
         </div>
       </div>
     </div>
+
+    <script>
+      // 페이지 로드 전 즉시 실행 - 초기 섹션 설정
+      document.addEventListener('DOMContentLoaded', function() {
+        const savedSection = localStorage.getItem("managerActiveSection");
+        
+        if (savedSection) {
+          // 저장된 섹션에 따라 즉시 올바른 메뉴 활성화 및 섹션 표시
+          const menuMap = {
+            'profile': 'menu-profile',
+            'clients': 'menu-clients',
+            'insurance': 'menu-insurance',
+            'exam': 'menu-exam',
+            'applicants': 'menu-applicants'
+          };
+          
+          const sectionMap = {
+            'profile': 'profile-section',
+            'clients': 'clients-section',
+            'insurance': 'insurance-section',
+            'exam': 'exam-section',
+            'applicants': 'applicants-section'
+          };
+          
+          // 모든 메뉴 비활성화
+          document.querySelectorAll('.sidebar-menu li').forEach(item => {
+            item.classList.remove('active');
+          });
+          
+          // 모든 섹션 숨김
+          document.querySelectorAll('.content-section').forEach(section => {
+            section.style.display = 'none';
+          });
+          
+          // 저장된 섹션만 활성화
+          const targetMenu = document.getElementById(menuMap[savedSection]);
+          const targetSection = document.getElementById(sectionMap[savedSection]);
+          
+          if (targetMenu) targetMenu.classList.add('active');
+          if (targetSection) targetSection.style.display = '';
+          
+          // 특정 섹션의 경우 컴포넌트 초기화 필요
+          if (savedSection === 'applicants' || savedSection === 'exam') {
+            // currentManager가 로드될 때까지 대기 후 초기화
+            function waitForManagerAndInit() {
+              if (window.currentManager) {
+                if (savedSection === 'applicants' && window.initApplicantViewer) {
+                  window.initApplicantViewer();
+                } else if (savedSection === 'exam' && window.initializeExamSchedule) {
+                  window.initializeExamSchedule();
+                }
+              } else {
+                // currentManager가 아직 없으면 100ms 후 다시 시도
+                setTimeout(waitForManagerAndInit, 100);
+              }
+            }
+            
+            // 담당자 로그인 완료 후에 초기화 시작
+            setTimeout(waitForManagerAndInit, 200);
+          }
+        } else {
+          // 저장된 섹션이 없으면 기본값 (내 정보 관리) 활성화
+          document.getElementById('menu-profile')?.classList.add('active');
+          document.getElementById('profile-section').style.display = '';
+        }
+      });
+    </script>
 
     <script type="module" src="manager.js"></script>
   </body>

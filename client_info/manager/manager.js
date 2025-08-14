@@ -101,6 +101,9 @@ window.login = async function() {
       await loadManagerProfile();
       await loadManagerClients();
       await loadInsuranceAccounts();
+      
+      // 섹션 복원은 HTML DOMContentLoaded 스크립트에서 즉시 처리됨
+      
 
 
     } else {
@@ -1569,6 +1572,9 @@ async function restoreSession() {
       await loadManagerClients();
       await loadInsuranceAccounts();
       
+      // 섹션 복원은 HTML DOMContentLoaded 스크립트에서 즉시 처리됨
+      
+      
       return true; // 세션 복원 성공
     }
   } catch (error) {
@@ -1667,24 +1673,36 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   // 사이드바 메뉴 클릭 이벤트
   document.getElementById('menu-profile').addEventListener('click', function() {
+    // localStorage에 현재 섹션 저장
+    localStorage.setItem("managerActiveSection", "profile");
+    
     showSection('profile-section');
     setActiveMenu('menu-profile');
     closeMobileMenu(); // 모바일에서 메뉴 선택 시 사이드바 닫기
   });
 
   document.getElementById('menu-clients').addEventListener('click', function() {
+    // localStorage에 현재 섹션 저장
+    localStorage.setItem("managerActiveSection", "clients");
+    
     showSection('clients-section');
     setActiveMenu('menu-clients');
     closeMobileMenu(); // 모바일에서 메뉴 선택 시 사이드바 닫기
   });
 
   document.getElementById('menu-insurance').addEventListener('click', function() {
+    // localStorage에 현재 섹션 저장
+    localStorage.setItem("managerActiveSection", "insurance");
+    
     showSection('insurance-section');
     setActiveMenu('menu-insurance');
     closeMobileMenu(); // 모바일에서 메뉴 선택 시 사이드바 닫기
   });
 
   document.getElementById('menu-exam').addEventListener('click', async function() {
+    // localStorage에 현재 섹션 저장
+    localStorage.setItem("managerActiveSection", "exam");
+    
     showSection('exam-section');
     setActiveMenu('menu-exam');
     closeMobileMenu(); // 모바일에서 메뉴 선택 시 사이드바 닫기
@@ -1694,6 +1712,9 @@ document.addEventListener('DOMContentLoaded', async function() {
   });
 
   document.getElementById('menu-applicants').addEventListener('click', async function() {
+    // localStorage에 현재 섹션 저장
+    localStorage.setItem("managerActiveSection", "applicants");
+    
     showSection('applicants-section');
     setActiveMenu('menu-applicants');
     closeMobileMenu(); // 모바일에서 메뉴 선택 시 사이드바 닫기
@@ -1878,6 +1899,8 @@ function closeMobileMenu() {
   // 바디 스크롤 복원
   document.body.style.overflow = '';
 }
+
+
 
 // 우편번호 검색 팝업 열기
 window.openPostcodeSearch = function openPostcodeSearch() {
@@ -2160,6 +2183,10 @@ async function initApplicantViewer() {
     showAlert('위촉자 조회 기능을 초기화할 수 없습니다.');
   }
 }
+
+// HTML에서 접근할 수 있도록 전역 함수로 등록
+window.initApplicantViewer = initApplicantViewer;
+window.initializeExamSchedule = initializeExamSchedule;
 
 
 // ========== 전화번호 입력 자동 이동 기능 (helpers.js에서 import) ==========

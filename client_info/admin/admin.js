@@ -19,33 +19,6 @@ import { showConfirmDialog, showAlert } from "../common/js/components/modal-mana
 import { PaginationManager } from "../common/js/components/pagination.js";
 import { auth, storage, functions } from "../common/js/core/firebase-config.js";
 
-// Firebase는 firebase-config.js에서 초기화됨
-
-// 암호화 키는 더 이상 클라이언트에서 사용하지 않음 (서버 사이드로 이동)
-// const ENCRYPT_KEY = window.currentConfig.encryptKey;
-// window.ENCRYPT_KEY = ENCRYPT_KEY;
-
-// CryptoJS는 더 이상 사용하지 않음 (서버 사이드로 이동)
-// function decryptSSN(ciphertext) {
-//   try {
-//     if (!ciphertext) return "";
-//     if (!window.CryptoJS) {
-//       console.error("CryptoJS가 로드되지 않았습니다.");
-//       return "복호화 실패";
-//     }
-//     if (!ENCRYPT_KEY) {
-//       console.error("암호화 키가 정의되지 않았습니다.");
-//       return "복호화 실패";
-//     }
-//     const bytes = window.CryptoJS.AES.decrypt(ciphertext, ENCRYPT_KEY);
-//     const decrypted = bytes.toString(window.CryptoJS.enc.Utf8);
-//     return decrypted || "복호화 실패";
-//   } catch (e) {
-//     console.error("복호화 중 에러 발생:", e);
-//     return "복호화 실패";
-//   }
-// }
-
 // 서버 사이드 복호화 함수
 async function decryptSSN(ciphertext) {
   try {
@@ -630,32 +603,6 @@ document.addEventListener('DOMContentLoaded', () => {
       sidebarOverlay.style.display = 'none';
     });
   }
-
-  // if (mobileMenuToggle && sidebar && sidebarOverlay) {
-  //   const openMenu = () => {
-  //     sidebar.classList.add('open');
-  //     sidebarOverlay.classList.add('show'); // CSS에서 .sidebar-overlay.show { display:block; }
-  //     document.body.style.overflow = 'hidden';
-  //     mobileMenuToggle.setAttribute('aria-expanded', 'true');
-  //   };
-
-  //   const closeMenu = () => {
-  //     sidebar.classList.remove('open');
-  //     sidebarOverlay.classList.remove('show');
-  //     document.body.style.overflow = '';
-  //     mobileMenuToggle.setAttribute('aria-expanded', 'false');
-  //   };
-
-  //   const toggleMenu = () => (sidebar.classList.contains('open') ? closeMenu() : openMenu());
-
-  //   mobileMenuToggle.addEventListener('click', toggleMenu);
-  //   sidebarOverlay.addEventListener('click', closeMenu);
-  //   document.addEventListener('keydown', (e) => {
-  //     if (e.key === 'Escape' && sidebar.classList.contains('open')) closeMenu();
-  //   });
-  // }
-
-  // setupInfiniteScroll(); // 페이지네이션으로 대체
 });
 
 // 검색 처리 함수 (검색 타입에 따라 분류)
@@ -872,6 +819,39 @@ function loadAdminData() {
   listenClients();
   // 마이그레이션 버튼 표시/숨김 체크
   toggleMigrationButton();
+  
+  // 필요한 컴포넌트 초기화 (섹션별로)
+  setTimeout(() => {
+    initializeCurrentSection();
+  }, 100);
+}
+
+// 현재 활성화된 섹션에 따라 필요한 초기화 수행
+function initializeCurrentSection() {
+  const savedSection = localStorage.getItem("adminActiveSection") || "managers";
+  
+  switch (savedSection) {
+    case "manager-info":
+      if (typeof renderManagerCards === 'function' && typeof managers !== 'undefined') {
+        renderManagerCards(managers, true);
+      }
+      break;
+    case "clients":
+      if (typeof renderCards === 'function' && typeof allClients !== 'undefined') {
+        renderCards(allClients, true);
+      }
+      break;
+    case "exam-schedule":
+      if (typeof initializeExamSchedule === 'function') {
+        initializeExamSchedule();
+      }
+      break;
+    case "applicants":
+      if (typeof initializeApplicantViewer === 'function') {
+        initializeApplicantViewer();
+      }
+      break;
+  }
 }
 
 // 고객 카드 페이지네이션 렌더링
@@ -2577,6 +2557,9 @@ function initMenuSwitch() {
   if (!menuManagers || !menuManagerInfo || !menuClients || !menuExamSchedule || !menuApplicants || !managerSection || !managerInfoSection || !clientSection || !examScheduleSection || !applicantsSection || !sidebar) return;
 
   menuManagers.addEventListener('click', () => {
+    // localStorage에 현재 섹션 저장
+    localStorage.setItem("adminActiveSection", "managers");
+    
     // 모달 클래스 정리
     cleanupModalClasses();
     
@@ -2608,6 +2591,9 @@ function initMenuSwitch() {
   });
   
   menuManagerInfo.addEventListener('click', () => {
+    // localStorage에 현재 섹션 저장
+    localStorage.setItem("adminActiveSection", "manager-info");
+    
     // 모달 클래스 정리
     cleanupModalClasses();
     
@@ -2637,6 +2623,9 @@ function initMenuSwitch() {
   });
   
   menuClients.addEventListener('click', () => {
+    // localStorage에 현재 섹션 저장
+    localStorage.setItem("adminActiveSection", "clients");
+    
     // 모달 클래스 정리
     cleanupModalClasses();
     
@@ -2665,6 +2654,9 @@ function initMenuSwitch() {
 
   // 자격시험 일정 메뉴 클릭 이벤트
   menuExamSchedule.addEventListener('click', () => {
+    // localStorage에 현재 섹션 저장
+    localStorage.setItem("adminActiveSection", "exam-schedule");
+    
     // 모달 클래스 정리
     cleanupModalClasses();
     
@@ -2687,6 +2679,9 @@ function initMenuSwitch() {
   });
 
   menuApplicants.addEventListener('click', () => {
+    // localStorage에 현재 섹션 저장
+    localStorage.setItem("adminActiveSection", "applicants");
+    
     // 모달 클래스 정리
     cleanupModalClasses();
     
