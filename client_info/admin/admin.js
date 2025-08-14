@@ -3996,6 +3996,7 @@ class AdminApplicantViewer {
     this.filteredApplicants = [];
     this.currentFilter = '';
     this.modal = null;
+    this.examSchedules = []; // 자격시험 일정 데이터 저장
   }
 
   async initialize() {
@@ -4009,11 +4010,31 @@ class AdminApplicantViewer {
     // 이벤트 리스너 설정
     this.setupEventListeners();
     
+    // 자격시험 일정 먼저 로드
+    await this.loadExamSchedules();
+    
     // 데이터 로드
     await this.loadApplicants();
     
     // 모달 생성
     this.createModal();
+  }
+
+  /**
+   * 자격시험 일정 데이터 로드
+   */
+  async loadExamSchedules() {
+    try {
+      const { getLifeInsuranceExamSchedules } = await import('../common/js/services/exam-service.js');
+      const result = await getLifeInsuranceExamSchedules();
+      
+      if (result.success && result.schedules) {
+        this.examSchedules = result.schedules;
+      }
+    } catch (error) {
+      console.warn('자격시험 일정 로드 실패:', error);
+      this.examSchedules = [];
+    }
   }
 
   render() {
@@ -4215,7 +4236,8 @@ class AdminApplicantViewer {
       if (applicant.examId) {
         const examData = this.parseExamIdToData(applicant.examId);
         if (examData?.examDate) {
-          examDateDisplay = examData.examDate;
+          const examRound = this.getExamRound(examData.examDate, examData.region);
+          examDateDisplay = examData.examDate + (examRound ? ` (${examRound})` : '');
         }
       }
       
@@ -4467,7 +4489,7 @@ class AdminApplicantViewer {
             </div>
             <div class="detail-item">
               <label>시험일</label>
-              <span>${examInfo.examDate || '미정'}</span>
+              <span>${examInfo.examDate || '미정'}${this.getExamRound(examInfo.examDate, examInfo.region) ? ` (${this.getExamRound(examInfo.examDate, examInfo.region)})` : ''}</span>
             </div>
             <div class="detail-item">
               <label>지역</label>
@@ -4632,6 +4654,53 @@ class AdminApplicantViewer {
     } catch (error) {
       console.warn('내부 마감일 계산 실패:', applicationStartDate, error);
       return '미정';
+    }
+  }
+
+  /**
+   * 시험일로부터 차수 판별 (자격시험 일정 데이터 기반)
+   */
+  getExamRound(examDateStr, region) {
+    if (!examDateStr || !region || !this.examSchedules.length) return '';
+    
+    try {
+      const examDate = new Date(examDateStr);
+      if (isNaN(examDate.getTime())) return '';
+      
+      const year = examDate.getFullYear();
+      const month = examDate.getMonth() + 1;
+      
+      // 같은 지역, 같은 년월의 시험일들을 수집
+      const sameMonthExams = [];
+      this.examSchedules.forEach(schedule => {
+        if (schedule.region === region) {
+          // '열기' 텍스트 제거하고 날짜 추출
+          const cleanScheduleDate = (schedule.examDate || '').replace(/\s*열기\s*$/, '').trim();
+          const dateMatch = cleanScheduleDate.match(/(\d{4}-\d{2}-\d{2})/);
+          if (dateMatch) {
+            const scheduleExamDate = new Date(dateMatch[1]);
+            if (!isNaN(scheduleExamDate.getTime()) && 
+                scheduleExamDate.getFullYear() === year && 
+                scheduleExamDate.getMonth() + 1 === month) {
+              sameMonthExams.push(dateMatch[1]);
+            }
+          }
+        }
+      });
+      
+      // 중복 제거 및 날짜 순 정렬
+      const uniqueExamDates = [...new Set(sameMonthExams)].sort();
+      
+      // 현재 시험일의 순서 찾기
+      const examIndex = uniqueExamDates.indexOf(examDateStr);
+      if (examIndex >= 0) {
+        return `${examIndex + 1}차`;
+      }
+      
+      return '';
+    } catch (error) {
+      console.warn('시험 차수 판별 실패:', examDateStr, error);
+      return '';
     }
   }
 

@@ -337,7 +337,7 @@ export class ExamScheduleUI {
         <h4 style="background: #f8f9fa; padding: 12px 20px; margin: 0 0 16px 0; border-left: 4px solid #3498db; color: #2c3e50; font-weight: 600;">
           ${region} (${regionSchedules.length}건)
         </h4>
-        ${this.generateScheduleTable(regionSchedules, region)}
+        ${this.generateScheduleTable(regionSchedules, region, allSchedules)}
       </div>
     `;
   }
@@ -345,13 +345,13 @@ export class ExamScheduleUI {
   /**
    * 스케줄 테이블 생성
    */
-  generateScheduleTable(schedules, region) {
+  generateScheduleTable(schedules, region, allSchedules = []) {
     // 모바일 환경 감지
     const isMobile = window.innerWidth <= 768;
     
     if (isMobile) {
       // 모바일에서는 카드 레이아웃 사용
-      return this.generateMobileCardLayout(schedules, region);
+      return this.generateMobileCardLayout(schedules, region, allSchedules);
     }
     
     // 접수기간별로 그룹화
@@ -424,6 +424,10 @@ export class ExamScheduleUI {
         // '열기' 텍스트 제거
         const cleanExamDate = (schedule.examDate || '미정').replace(/\s*열기\s*$/, '').trim();
         
+        // 차수 판별
+        const examRound = this.getExamRound(schedule.examDate, region, allSchedules);
+        const examDateWithRound = cleanExamDate + (examRound ? ` (${examRound})` : '');
+        
         // 개별 시험일용 examId 생성
         const individualExamId = this.generateExamId(schedule, region);
         
@@ -472,7 +476,7 @@ export class ExamScheduleUI {
         
         tableHTML += `
           <tr style="background: ${rowBg}; border-bottom: 1px solid #ecf0f1;">
-            <td style="padding: 12px; text-align: center; color: #2c3e50; font-weight: 500;">${cleanExamDate}</td>
+            <td style="padding: 12px; text-align: center; color: #2c3e50; font-weight: 500;">${examDateWithRound}</td>
             <td style="padding: 12px; text-align: center; color: #2c3e50;">${schedule.resultDate || '미정'}</td>
             <td style="padding: 12px; text-align: center;">
               <span style="background: ${statusColor}; color: white; padding: 4px 12px; border-radius: 16px; font-size: 12px; font-weight: 600;">
@@ -596,7 +600,7 @@ export class ExamScheduleUI {
   /**
    * 모바일용 카드 레이아웃 생성
    */
-  generateMobileCardLayout(schedules, region) {
+  generateMobileCardLayout(schedules, region, allSchedules = []) {
     // 접수기간별로 그룹화
     const groupedSchedules = this.groupByApplicationPeriod(schedules);
     
@@ -652,6 +656,10 @@ export class ExamScheduleUI {
         // '열기' 텍스트 제거
         const cleanExamDate = (schedule.examDate || '미정').replace(/\s*열기\s*$/, '').trim();
         
+        // 차수 판별 (모바일용)
+        const mobileExamRound = this.getExamRound(schedule.examDate, region, allSchedules);
+        const mobileExamDateWithRound = cleanExamDate + (mobileExamRound ? ` (${mobileExamRound})` : '');
+        
         // 모바일용 개별 버튼 생성
         const mobileIndividualExamId = this.generateExamId(schedule, region);
         
@@ -700,7 +708,7 @@ export class ExamScheduleUI {
         cardHTML += `
           <div style="background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-              <span style="font-weight: 600; color: #2c3e50; font-size: 15px;"><i class="fas fa-calendar-day"></i> ${cleanExamDate}</span>
+              <span style="font-weight: 600; color: #2c3e50; font-size: 15px;"><i class="fas fa-calendar-day"></i> ${mobileExamDateWithRound}</span>
               <span style="background: ${statusColor}; color: white; padding: 3px 8px; border-radius: 10px; font-size: 10px; font-weight: 600;">
                 ${statusText}
               </span>
@@ -780,6 +788,58 @@ export class ExamScheduleUI {
     };
     
     return regionCodes[region] || 'ETC';
+  }
+
+  /**
+   * 시험일로부터 차수 판별 (지역별 월별 시험일 순서에 따라)
+   */
+  getExamRound(examDateStr, region, allSchedules) {
+    if (!examDateStr || !region || !allSchedules) return '';
+    
+    try {
+      // '열기' 텍스트 제거하고 날짜 추출
+      const cleanExamDate = examDateStr.replace(/\s*열기\s*$/, '').trim();
+      const dateMatch = cleanExamDate.match(/(\d{4}-\d{2}-\d{2})/);
+      if (!dateMatch) return '';
+      
+      const targetExamDate = dateMatch[1];
+      const examDate = new Date(targetExamDate);
+      if (isNaN(examDate.getTime())) return '';
+      
+      const year = examDate.getFullYear();
+      const month = examDate.getMonth() + 1;
+      
+      // 같은 지역, 같은 년월의 시험일들을 수집
+      const sameMonthExams = [];
+      allSchedules.forEach(schedule => {
+        if (schedule.region === region) {
+          const scheduleCleanDate = (schedule.examDate || '').replace(/\s*열기\s*$/, '').trim();
+          const scheduleMatch = scheduleCleanDate.match(/(\d{4}-\d{2}-\d{2})/);
+          if (scheduleMatch) {
+            const scheduleExamDate = new Date(scheduleMatch[1]);
+            if (!isNaN(scheduleExamDate.getTime()) && 
+                scheduleExamDate.getFullYear() === year && 
+                scheduleExamDate.getMonth() + 1 === month) {
+              sameMonthExams.push(scheduleMatch[1]);
+            }
+          }
+        }
+      });
+      
+      // 중복 제거 및 날짜 순 정렬
+      const uniqueExamDates = [...new Set(sameMonthExams)].sort();
+      
+      // 현재 시험일의 순서 찾기
+      const examIndex = uniqueExamDates.indexOf(targetExamDate);
+      if (examIndex >= 0) {
+        return `${examIndex + 1}차`;
+      }
+      
+      return '';
+    } catch (error) {
+      console.warn('시험 차수 판별 실패:', examDateStr, error);
+      return '';
+    }
   }
 
   /**
