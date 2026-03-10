@@ -9,7 +9,6 @@ jobs:
   crawl:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    environment: SUPABASE
     defaults:
       run:
         working-directory: finsupport_final
@@ -30,6 +29,3 @@ jobs:
 
       - name: 크롤링 실행
         run: python crawler.py
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
