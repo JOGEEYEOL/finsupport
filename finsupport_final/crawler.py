@@ -19,14 +19,10 @@ from code_map import INDUSTRY_CODE_MAP
 # ──────────────────────────────────────
 # Supabase 설정 (환경변수 우선, 없으면 기본값)
 # ──────────────────────────────────────
-SUPABASE_URL = os.environ.get(
-    "SUPABASE_URL",
-    "https://iqbfrlvujjkuluuofyjn.supabase.co"
-)
-SUPABASE_KEY = os.environ.get(
-    "SUPABASE_KEY",
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlxYmZybHZ1amprdWx1dW9meWpuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc3OTk5OTcsImV4cCI6MjA2MzM3NTk5N30.ikcYxfp5IveUafZwRsVOhlXqXJ3jqae9hsWIWB5lF80"
-)
+_DEFAULT_URL = "https://iqbfrlvujjkuluuofyjn.supabase.co"
+_DEFAULT_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlxYmZybHZ1amprdWx1dW9meWpuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc3OTk5OTcsImV4cCI6MjA2MzM3NTk5N30.ikcYxfp5IveUafZwRsVOhlXqXJ3jqae9hsWIWB5lF80"
+SUPABASE_URL = os.environ.get("SUPABASE_URL") or _DEFAULT_URL
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY") or _DEFAULT_KEY
 
 # ──────────────────────────────────────
 # 로깅 설정
