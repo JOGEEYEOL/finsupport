@@ -2,7 +2,7 @@ name: 자동 공고 크롤링
 
 on:
   schedule:
-    - cron: '0 0 * * *'  # 매일 09:00 KST (UTC 00:00)
+    - cron: '0 23 * * *'  # 매일 08:00 KST (UTC 23:00 전날)
   workflow_dispatch:      # 수동 실행 가능
 
 jobs:
