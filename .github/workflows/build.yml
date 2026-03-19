@@ -12,7 +12,7 @@ jobs:
 
     steps:
       - name: 코드 체크아웃
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Python 설정
         uses: actions/setup-python@v5
@@ -31,7 +31,7 @@ jobs:
           pyinstaller --onefile --windowed --name="FinsupportManager" --add-data="code_map.py;." --add-data="utils.py;." --hidden-import=supabase --hidden-import=gotrue --hidden-import=postgrest --hidden-import=realtime --hidden-import=storage3 --hidden-import=supafunc --hidden-import=pandas --hidden-import=openpyxl --hidden-import=beautifulsoup4 --hidden-import=tkinter --hidden-import=tkinter.ttk --hidden-import=tkinter.messagebox --hidden-import=customtkinter --hidden-import=aiohttp --hidden-import=threading --hidden-import=asyncio team_manager_modern.py
 
       - name: 빌드 결과 업로드
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: FinsupportManager-Windows
           path: finsupport_final/dist/FinsupportManager.exe
