@@ -5,8 +5,8 @@ from supabase import create_client, Client
 from code_map import *
 
 # Supabase 설정
-SUPABASE_URL = "https://iqbfrlvujjkuluuofyjn.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlxYmZybHZ1amprdWx1dW9meWpuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc3OTk5OTcsImV4cCI6MjA2MzM3NTk5N30.ikcYxfp5IveUafZwRsVOhlXqXJ3jqae9hsWIWB5lF80"
+SUPABASE_URL = "https://qykuzouyjxjizitzpzoo.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5a3V6b3V5anhqaXppdHpwem9vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NjM0NDcsImV4cCI6MjA4OTQzOTQ0N30.cbXY_OxvOc0tIJQJ18HAdWKhUGMMywb9fdADFaflFEg"
 
 # Supabase 클라이언트 생성
 def get_supabase_client():
