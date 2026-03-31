@@ -218,17 +218,23 @@ def save_download_history(team_leader, company_id, company_name, subvention_ids,
         return True
 
 def get_company_download_history(company_id):
-    """업체별 오늘 다운로드 받은 공고 ID 목록 반환 (같은 날 중복 방지)"""
+    """업체별 전체 다운로드 받은 공고 ID 목록 반환 (중복 다운로드 방지)"""
     try:
         supabase = get_supabase_client()
-        # 오늘 다운로드한 것만 필터링 (같은 날 재다운로드 방지, 다른 날은 허용)
-        today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
-        result = supabase.table("Download History").select("subvention_id").eq("company_id", company_id).gte("download_date", today_start).execute()
-        downloaded_ids = set(item['subvention_id'] for item in result.data)
+        downloaded_ids = set()
+        page_size = 1000
+        offset = 0
+        while True:
+            result = supabase.table("Download History").select("subvention_id").eq("company_id", company_id).order("id").range(offset, offset + page_size - 1).execute()
+            if not result.data:
+                break
+            downloaded_ids.update(item['subvention_id'] for item in result.data)
+            if len(result.data) < page_size:
+                break
+            offset += page_size
         return downloaded_ids
     except Exception as e:
-        # 테이블이 없는 경우 빈 set 반환 (모든 공고를 신규로 처리)
-        logging.warning(f"다운로드 히스토리 조회 실패 (테이블 없음): {e}")
+        logging.warning(f"다운로드 히스토리 조회 실패: {e}")
         return set()
 
 def is_new_company(company_id):

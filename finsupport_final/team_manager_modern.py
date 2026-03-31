@@ -437,15 +437,25 @@ def download_data_from_db(team_leader=None, log_callback=None, download_folder=N
 
             business_type_code = INDUSTRY_CODE_MAP.get(industry, "ALL")
 
-            query = supabase.table("Finsupport Data").select("*")
-
-            if business_type_code != "ALL":
-                query = query.or_(f"business_type_code.like.%{business_type_code}%,business_type_code.eq.ALL")
-
-            result = query.execute()
+            # 페이지네이션으로 전체 데이터 조회 (Supabase 1,000건 제한 대응)
+            all_data = []
+            page_size = 1000
+            offset = 0
+            while True:
+                query = supabase.table("Finsupport Data").select("*")
+                if business_type_code != "ALL":
+                    query = query.or_(f"business_type_code.like.%{business_type_code}%,business_type_code.eq.ALL")
+                query = query.order("id").range(offset, offset + page_size - 1)
+                result = query.execute()
+                if not result.data:
+                    break
+                all_data.extend(result.data)
+                if len(result.data) < page_size:
+                    break
+                offset += page_size
 
             filtered_data = []
-            for item in result.data:
+            for item in all_data:
                 item_area = item['area'].lower()
 
                 is_area_match = False
